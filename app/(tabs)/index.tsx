@@ -194,14 +194,7 @@ export default function RecordsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => setShowSearchFilter(true)}
-          >
-            <Ionicons name="search" size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+        <View style={styles.headerLeft} />
         <Text style={styles.headerTitle}>{pl.main.title}</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity

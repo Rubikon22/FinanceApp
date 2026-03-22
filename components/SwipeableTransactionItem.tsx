@@ -4,16 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedGestureHandler,
   withSpring,
   withTiming,
-  runOnJS,
   interpolate,
   Extrapolate,
+  runOnJS,
 } from 'react-native-reanimated';
-import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Transaction } from '@/types';
-import { Colors, getThemeColors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
 import { getCategoryById } from '@/constants/categories';
 import { useAccounts } from '@/store/useAccounts';
 import { useTheme } from '@/store/useTheme';
@@ -45,11 +44,12 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
   const translateX = useSharedValue(0);
 
   const handleDelete = () => {
+    translateX.value = withSpring(0);
     Alert.alert(
       pl.common.delete,
       'Czy na pewno chcesz usunac te transakcje?',
       [
-        { text: pl.common.cancel, style: 'cancel', onPress: () => { translateX.value = withSpring(0); } },
+        { text: pl.common.cancel, style: 'cancel' },
         {
           text: pl.common.delete,
           style: 'destructive',
@@ -67,94 +67,53 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
     onEdit?.();
   };
 
-  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent, { startX: number }>({
-    onStart: (_, ctx) => {
-      ctx.startX = translateX.value;
-    },
-    onActive: (event, ctx) => {
-      const newValue = ctx.startX + event.translationX;
-      // Limit swipe to left only (negative values) and cap at -160
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-15, 15])
+    .failOffsetY([-10, 10])
+    .onUpdate((event) => {
+      const newValue = event.translationX;
       translateX.value = Math.max(Math.min(newValue, 0), -160);
-    },
-    onEnd: (event) => {
+    })
+    .onEnd(() => {
       if (translateX.value < -SWIPE_THRESHOLD) {
-        // Snap to show actions
         translateX.value = withSpring(-160);
       } else {
-        // Snap back
         translateX.value = withSpring(0);
       }
-    },
-  });
+    });
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
 
-  const editButtonStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      translateX.value,
-      [0, -80],
-      [0, 1],
-      Extrapolate.CLAMP
-    );
-    const scale = interpolate(
-      translateX.value,
-      [0, -80],
-      [0.5, 1],
-      Extrapolate.CLAMP
-    );
-    return {
-      opacity,
-      transform: [{ scale }],
-    };
-  });
+  const editButtonStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [0, -80], [0, 1], Extrapolate.CLAMP),
+    transform: [{ scale: interpolate(translateX.value, [0, -80], [0.5, 1], Extrapolate.CLAMP) }],
+  }));
 
-  const deleteButtonStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      translateX.value,
-      [-80, -160],
-      [0, 1],
-      Extrapolate.CLAMP
-    );
-    const scale = interpolate(
-      translateX.value,
-      [-80, -160],
-      [0.5, 1],
-      Extrapolate.CLAMP
-    );
-    return {
-      opacity,
-      transform: [{ scale }],
-    };
-  });
+  const deleteButtonStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [-80, -160], [0, 1], Extrapolate.CLAMP),
+    transform: [{ scale: interpolate(translateX.value, [-80, -160], [0.5, 1], Extrapolate.CLAMP) }],
+  }));
 
   const getAmountColor = () => {
     switch (transaction.type) {
-      case 'income':
-        return colors.income;
-      case 'expense':
-        return colors.expense;
-      case 'transfer':
-        return colors.transfer;
+      case 'income': return colors.income;
+      case 'expense': return colors.expense;
+      case 'transfer': return colors.transfer;
     }
   };
 
   const getAmountPrefix = () => {
     switch (transaction.type) {
-      case 'income':
-        return '+';
-      case 'expense':
-        return '-';
-      case 'transfer':
-        return '';
+      case 'income': return '+';
+      case 'expense': return '-';
+      case 'transfer': return '';
     }
   };
 
   const getIcon = () => {
-    if (transaction.type === 'transfer') {
-      return 'swap-horizontal';
-    }
+    if (transaction.type === 'transfer') return 'swap-horizontal';
     return category?.icon || 'ellipsis-horizontal';
   };
 
@@ -186,7 +145,7 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
       </View>
 
       {/* Main content */}
-      <PanGestureHandler onGestureEvent={gestureHandler}>
+      <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.itemContainer, animatedStyle]}>
           <TouchableOpacity
             style={styles.content}
@@ -194,11 +153,7 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
             activeOpacity={0.7}
           >
             <View style={[styles.iconContainer, { backgroundColor: category?.color || colors.transfer }]}>
-              <Ionicons
-                name={getIcon() as any}
-                size={22}
-                color={colors.white}
-              />
+              <Ionicons name={getIcon() as any} size={22} color={colors.white} />
             </View>
 
             <View style={styles.textContent}>
@@ -207,9 +162,7 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
               </Text>
               <Text style={styles.account}>{getSubtitle()}</Text>
               {transaction.note && (
-                <Text style={styles.note} numberOfLines={1}>
-                  {transaction.note}
-                </Text>
+                <Text style={styles.note} numberOfLines={1}>{transaction.note}</Text>
               )}
             </View>
 
@@ -220,7 +173,7 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
             </View>
           </TouchableOpacity>
         </Animated.View>
-      </PanGestureHandler>
+      </GestureDetector>
     </View>
   );
 };

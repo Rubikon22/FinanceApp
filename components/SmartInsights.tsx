@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { getThemeColors } from '@/constants/colors';
 import { ThemeMode } from '@/types';
 import { SmartInsight } from '@/services/aiInsights';
@@ -65,8 +64,8 @@ export const SmartInsights: React.FC<SmartInsightsProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {insights.map((insight, index) => (
-          <Animated.View
+        {insights.map((insight) => (
+          <View
             key={insight.id}
             style={[
               styles.insightCard,
@@ -75,7 +74,6 @@ export const SmartInsights: React.FC<SmartInsightsProps> = ({
                 borderColor: `${getInsightColor(insight.type)}40`,
               },
             ]}
-            entering={FadeInDown.delay(index * 100).duration(400)}
           >
             <View
               style={[
@@ -107,7 +105,7 @@ export const SmartInsights: React.FC<SmartInsightsProps> = ({
                 </View>
               )}
             </View>
-          </Animated.View>
+          </View>
         ))}
       </ScrollView>
     </View>
@@ -150,7 +148,7 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) =>
       marginBottom: 12,
     },
     insightContent: {
-      flex: 1,
+      flexShrink: 1,
     },
     insightTitle: {
       fontSize: 16,

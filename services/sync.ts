@@ -1,7 +1,13 @@
 import { useAuth } from '@/store/useAuth';
 import { useTransactions } from '@/store/useTransactions';
 import { useAccounts } from '@/store/useAccounts';
-import * as firebase from './firebase';
+import {
+  syncTransactions,
+  fetchTransactions,
+  syncAccounts,
+  fetchAccounts,
+  onAuthChange,
+} from './supabase';
 import * as database from './database';
 
 export const syncWithCloud = async (): Promise<void> => {
@@ -9,14 +15,12 @@ export const syncWithCloud = async (): Promise<void> => {
   if (!user) return;
 
   try {
-    // Sync transactions
+    // Upload unsynced local transactions
     const localTransactions = await database.getAllTransactions();
     const unsyncedTransactions = localTransactions.filter(t => !t.synced);
 
     if (unsyncedTransactions.length > 0) {
-      await firebase.syncTransactions(user.id, unsyncedTransactions);
-
-      // Mark as synced locally
+      await syncTransactions(user.id, unsyncedTransactions);
       for (const transaction of unsyncedTransactions) {
         await database.updateTransaction({
           ...transaction,
@@ -26,33 +30,28 @@ export const syncWithCloud = async (): Promise<void> => {
       }
     }
 
-    // Fetch cloud transactions
-    const cloudTransactions = await firebase.fetchTransactions(user.id);
-
-    // Merge cloud transactions with local
+    // Fetch and merge cloud transactions
+    const cloudTransactions = await fetchTransactions(user.id);
     for (const cloudTx of cloudTransactions) {
-      const localTx = localTransactions.find(t => t.id === cloudTx.id);
-      if (!localTx) {
+      const exists = localTransactions.find(t => t.id === cloudTx.id);
+      if (!exists) {
         await database.addTransaction(cloudTx);
       }
     }
 
-    // Sync accounts
+    // Upload accounts
     const localAccounts = await database.getAllAccounts();
-    await firebase.syncAccounts(user.id, localAccounts);
+    await syncAccounts(user.id, localAccounts);
 
-    // Fetch cloud accounts
-    const cloudAccounts = await firebase.fetchAccounts(user.id);
-
-    // Merge cloud accounts with local
+    // Fetch and merge cloud accounts
+    const cloudAccounts = await fetchAccounts(user.id);
     for (const cloudAcc of cloudAccounts) {
-      const localAcc = localAccounts.find(a => a.id === cloudAcc.id);
-      if (!localAcc) {
+      const exists = localAccounts.find(a => a.id === cloudAcc.id);
+      if (!exists) {
         await database.addAccount(cloudAcc);
       }
     }
 
-    // Reload stores
     await useTransactions.getState().loadTransactions();
     await useAccounts.getState().loadAccounts();
   } catch (error) {
@@ -63,11 +62,9 @@ export const syncWithCloud = async (): Promise<void> => {
 };
 
 export const setupAuthListener = (): (() => void) => {
-  return firebase.onAuthChange((user) => {
+  return onAuthChange((user) => {
     useAuth.getState().setUser(user);
-
     if (user) {
-      // Sync when user logs in
       syncWithCloud().catch(console.error);
     }
   });

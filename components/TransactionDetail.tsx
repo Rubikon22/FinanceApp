@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Transaction } from '@/types';
 import { Colors } from '@/constants/colors';
@@ -9,6 +9,8 @@ import { useTransactions } from '@/store/useTransactions';
 import { pl } from '@/i18n/pl';
 import { format } from 'date-fns';
 import { pl as dateFnsPl } from 'date-fns/locale';
+
+const SCREEN_HEIGHT = Dimensions.get('screen').height;
 
 interface TransactionDetailProps {
   transaction: Transaction | null;
@@ -97,9 +99,10 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       onRequestClose={onClose}
+      statusBarTranslucent
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
@@ -216,10 +219,12 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
+    height: SCREEN_HEIGHT,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
+    width: '100%',
     backgroundColor: Colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

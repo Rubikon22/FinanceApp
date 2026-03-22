@@ -1,12 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, RefreshControl } from 'react-native';
-import Animated, {
-  FadeInRight,
-  FadeOutLeft,
-  Layout,
-  SlideInRight,
-  SlideOutLeft,
-} from 'react-native-reanimated';
+import { View, Text, StyleSheet, RefreshControl, ScrollView } from 'react-native';
 import { Transaction } from '@/types';
 import { Colors, getThemeColors } from '@/constants/colors';
 import { SwipeableTransactionItem } from './SwipeableTransactionItem';
@@ -86,16 +79,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   if (transactions.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Animated.View entering={FadeInRight.delay(200).duration(400)}>
-          <Text style={styles.emptyText}>{pl.main.noTransactions}</Text>
-          <Text style={styles.emptySubtext}>{pl.main.addFirst}</Text>
-        </Animated.View>
+        <Text style={styles.emptyText}>{pl.main.noTransactions}</Text>
+        <Text style={styles.emptySubtext}>{pl.main.addFirst}</Text>
       </View>
     );
   }
 
   return (
-    <Animated.ScrollView
+    <ScrollView
       style={styles.scrollView}
       contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
@@ -110,33 +101,23 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         ) : undefined
       }
     >
-      {sections.map((section, sectionIndex) => (
-        <Animated.View
-          key={section.title}
-          entering={FadeInRight.delay(sectionIndex * 100).duration(400)}
-          layout={Layout.springify()}
-        >
+      {sections.map((section) => (
+        <View key={section.title}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
           </View>
-          {section.data.map((item, itemIndex) => (
-            <Animated.View
+          {section.data.map((item) => (
+            <SwipeableTransactionItem
               key={item.id}
-              entering={SlideInRight.delay(sectionIndex * 100 + itemIndex * 50).duration(400).springify()}
-              exiting={SlideOutLeft.duration(300)}
-              layout={Layout.springify()}
-            >
-              <SwipeableTransactionItem
-                transaction={item}
-                onPress={() => onTransactionPress?.(item)}
-                onEdit={() => onEditTransaction?.(item)}
-                onDelete={() => handleDelete(item.id)}
-              />
-            </Animated.View>
+              transaction={item}
+              onPress={() => onTransactionPress?.(item)}
+              onEdit={() => onEditTransaction?.(item)}
+              onDelete={() => handleDelete(item.id)}
+            />
           ))}
-        </Animated.View>
+        </View>
       ))}
-    </Animated.ScrollView>
+    </ScrollView>
   );
 };
 

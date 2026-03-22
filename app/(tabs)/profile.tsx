@@ -34,6 +34,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showRecurringList, setShowRecurringList] = useState(false);
@@ -45,6 +46,7 @@ export default function ProfileScreen() {
   const user = useAuth(state => state.user);
   const isAuthenticated = useAuth(state => state.isAuthenticated);
   const login = useAuth(state => state.login);
+  const register = useAuth(state => state.register);
   const logout = useAuth(state => state.logout);
 
   const theme = useTheme(state => state.theme);
@@ -106,12 +108,18 @@ export default function ProfileScreen() {
       return;
     }
     try {
-      await login(email.trim(), password);
+      if (isRegisterMode) {
+        await register(email.trim(), password);
+      } else {
+        await login(email.trim(), password);
+      }
       setShowLoginModal(false);
       setEmail('');
       setPassword('');
+      setIsRegisterMode(false);
     } catch (error) {
-      Alert.alert(pl.errors.errorTitle, pl.errors.loginFailed);
+      const message = error instanceof Error ? error.message : pl.errors.loginFailed;
+      Alert.alert(pl.errors.errorTitle, message);
     }
   };
 
@@ -447,8 +455,15 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{pl.profile.login}</Text>
-              <TouchableOpacity onPress={() => setShowLoginModal(false)}>
+              <Text style={styles.modalTitle}>
+                {isRegisterMode ? 'Rejestracja' : pl.profile.login}
+              </Text>
+              <TouchableOpacity onPress={() => {
+                setShowLoginModal(false);
+                setIsRegisterMode(false);
+                setEmail('');
+                setPassword('');
+              }}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -467,13 +482,26 @@ export default function ProfileScreen() {
               style={styles.input}
               value={password}
               onChangeText={setPassword}
-              placeholder="Haslo"
+              placeholder="Hasło"
               placeholderTextColor={colors.textSecondary}
               secureTextEntry
             />
 
             <TouchableOpacity style={styles.submitButton} onPress={handleLogin}>
-              <Text style={styles.submitButtonText}>{pl.profile.login}</Text>
+              <Text style={styles.submitButtonText}>
+                {isRegisterMode ? 'Zarejestruj się' : pl.profile.login}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.switchModeButton}
+              onPress={() => setIsRegisterMode(prev => !prev)}
+            >
+              <Text style={styles.switchModeText}>
+                {isRegisterMode
+                  ? 'Masz już konto? Zaloguj się'
+                  : 'Nie masz konta? Zarejestruj się'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -893,6 +921,14 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     fontSize: 16,
     fontWeight: '700',
     color: colors.white,
+  },
+  switchModeButton: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  switchModeText: {
+    fontSize: 14,
+    color: colors.primary,
   },
   settingItem: {
     flexDirection: 'row',

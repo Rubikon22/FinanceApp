@@ -2,11 +2,13 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Alert } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '@/constants/colors';
 import { pl } from '@/i18n/pl';
 import { useTransactions } from '@/store/useTransactions';
 import { useAccounts } from '@/store/useAccounts';
 import { useAuth } from '@/store/useAuth';
+import { setupAuthListener } from '@/services/sync';
 
 export default function RootLayout() {
   const loadTransactions = useTransactions(state => state.loadTransactions);
@@ -26,10 +28,14 @@ export default function RootLayout() {
       }
     };
     initApp();
+
+    // Listen for Supabase auth state changes (login/logout/session restore)
+    const unsubscribe = setupAuthListener();
+    return unsubscribe;
   }, []);
 
   return (
-    <View style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -54,7 +60,7 @@ export default function RootLayout() {
           }}
         />
       </Stack>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
