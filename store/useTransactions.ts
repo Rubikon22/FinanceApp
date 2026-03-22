@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import { Transaction, TransactionType, PeriodType } from '@/types';
 import * as db from '@/services/database';
-import { deleteTransactionFromCloud } from '@/services/supabase';
+import { supabase, syncTransactions, syncAccounts, deleteTransactionFromCloud } from '@/services/supabase';
+
+const getCloudUserId = async (): Promise<string | null> => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+};
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
 
 interface SearchFilters {
@@ -113,13 +118,25 @@ export const useTransactions = create<TransactionsState>((set, get) => ({
         id: generateId(),
         createdAt: now,
         updatedAt: now,
-        synced: false,
+        synced: true,
       };
       await db.addTransaction(transaction);
       set(state => ({
         transactions: [transaction, ...state.transactions],
         isLoading: false,
       }));
+      // Sync to cloud in background
+      const userId = await getCloudUserId();
+      if (userId) {
+        syncTransactions(userId, [transaction]).catch(() => {});
+        // Sync updated account balances
+        const account = await db.getAccountById(transaction.accountId);
+        if (account) syncAccounts(userId, [account]).catch(() => {});
+        if (transaction.toAccountId) {
+          const toAccount = await db.getAccountById(transaction.toAccountId);
+          if (toAccount) syncAccounts(userId, [toAccount]).catch(() => {});
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add transaction';
       set({ error: message, isLoading: false });
@@ -133,7 +150,7 @@ export const useTransactions = create<TransactionsState>((set, get) => ({
       const updatedTransaction = {
         ...transaction,
         updatedAt: new Date().toISOString(),
-        synced: false,
+        synced: true,
       };
       await db.updateTransaction(updatedTransaction);
       set(state => ({
@@ -142,6 +159,13 @@ export const useTransactions = create<TransactionsState>((set, get) => ({
         ),
         isLoading: false,
       }));
+      // Sync to cloud in background
+      const userId = await getCloudUserId();
+      if (userId) {
+        syncTransactions(userId, [updatedTransaction]).catch(() => {});
+        const account = await db.getAccountById(transaction.accountId);
+        if (account) syncAccounts(userId, [account]).catch(() => {});
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update transaction';
       set({ error: message, isLoading: false });
@@ -152,13 +176,21 @@ export const useTransactions = create<TransactionsState>((set, get) => ({
   deleteTransaction: async (id) => {
     set({ isLoading: true, error: null });
     try {
+      const transaction = get().transactions.find(t => t.id === id);
       await db.deleteTransaction(id);
-      // Delete from cloud in background (silently ignore if not authenticated)
       deleteTransactionFromCloud(id).catch(() => {});
       set(state => ({
         transactions: state.transactions.filter(t => t.id !== id),
         isLoading: false,
       }));
+      // Sync updated account balance after deletion
+      if (transaction) {
+        const userId = await getCloudUserId();
+        if (userId) {
+          const account = await db.getAccountById(transaction.accountId);
+          if (account) syncAccounts(userId, [account]).catch(() => {});
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete transaction';
       set({ error: message, isLoading: false });

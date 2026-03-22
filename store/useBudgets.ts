@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { Budget } from '@/types';
 import * as db from '@/services/database';
+import { supabase, syncBudgets, deleteBudgetFromCloud } from '@/services/supabase';
+
+const getCloudUserId = async (): Promise<string | null> => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+};
 
 interface BudgetProgress {
   budget: Budget;
@@ -58,13 +64,14 @@ export const useBudgets = create<BudgetsState>((set, get) => ({
       };
       await db.addBudget(budget);
       set(state => ({
-        // Replace existing budget for same category
         budgets: [
           ...state.budgets.filter(b => b.categoryId !== categoryId),
           budget,
         ],
         isLoading: false,
       }));
+      const userId = await getCloudUserId();
+      if (userId) syncBudgets(userId, [budget]).catch(() => {});
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add budget';
       set({ error: message, isLoading: false });
@@ -80,6 +87,8 @@ export const useBudgets = create<BudgetsState>((set, get) => ({
         budgets: state.budgets.map(b => b.id === budget.id ? budget : b),
         isLoading: false,
       }));
+      const userId = await getCloudUserId();
+      if (userId) syncBudgets(userId, [budget]).catch(() => {});
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update budget';
       set({ error: message, isLoading: false });
@@ -95,6 +104,7 @@ export const useBudgets = create<BudgetsState>((set, get) => ({
         budgets: state.budgets.filter(b => b.id !== id),
         isLoading: false,
       }));
+      deleteBudgetFromCloud(id).catch(() => {});
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete budget';
       set({ error: message, isLoading: false });

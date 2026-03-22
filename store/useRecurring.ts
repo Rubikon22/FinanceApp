@@ -1,7 +1,13 @@
 import { create } from 'zustand';
 import { RecurringTransaction, RecurringFrequency, TransactionType } from '@/types';
 import * as db from '@/services/database';
+import { supabase, syncRecurringTransactions } from '@/services/supabase';
 import { addDays, addWeeks, addMonths, addYears, format } from 'date-fns';
+
+const getCloudUserId = async (): Promise<string | null> => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+};
 
 interface RecurringState {
   recurringTransactions: RecurringTransaction[];
@@ -73,6 +79,8 @@ export const useRecurring = create<RecurringState>((set, get) => ({
         recurringTransactions: [...state.recurringTransactions, recurring],
         isLoading: false,
       }));
+      const userId = await getCloudUserId();
+      if (userId) syncRecurringTransactions(userId, [recurring]).catch(() => {});
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add recurring transaction';
       set({ error: message, isLoading: false });
@@ -90,6 +98,8 @@ export const useRecurring = create<RecurringState>((set, get) => ({
         ),
         isLoading: false,
       }));
+      const userId = await getCloudUserId();
+      if (userId) syncRecurringTransactions(userId, [recurring]).catch(() => {});
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update recurring transaction';
       set({ error: message, isLoading: false });
@@ -105,6 +115,11 @@ export const useRecurring = create<RecurringState>((set, get) => ({
         recurringTransactions: state.recurringTransactions.filter(r => r.id !== id),
         isLoading: false,
       }));
+      // Delete from cloud in background
+      const userId = await getCloudUserId();
+      if (userId) {
+        supabase.from('recurring_transactions').delete().eq('id', id).then(() => {});
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete recurring transaction';
       set({ error: message, isLoading: false });

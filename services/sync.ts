@@ -69,36 +69,46 @@ export const syncWithCloud = async (): Promise<void> => {
       }
     }
 
-    // Sync budgets
-    const localBudgets = await database.getAllBudgets();
-    await syncBudgets(user.id, localBudgets);
-    const cloudBudgets = await fetchBudgets(user.id);
-    for (const cloudBudget of cloudBudgets) {
-      const exists = localBudgets.find(b => b.id === cloudBudget.id);
-      if (!exists) {
-        await database.addBudget(cloudBudget);
-      }
-    }
-
-    // Sync recurring transactions
-    const localRecurring = await database.getAllRecurringTransactions();
-    await syncRecurringTransactions(user.id, localRecurring);
-    const cloudRecurring = await fetchRecurringTransactions(user.id);
-    for (const cloudR of cloudRecurring) {
-      const exists = localRecurring.find(r => r.id === cloudR.id);
-      if (!exists) {
-        await database.addRecurringTransaction(cloudR);
-      }
-    }
-
     await useTransactions.getState().loadTransactions();
     await useAccounts.getState().loadAccounts();
-    await useBudgets.getState().loadBudgets();
-    await useRecurring.getState().loadRecurringTransactions();
+
+    // Sync budgets (non-fatal — table may not exist yet)
+    try {
+      const localBudgets = await database.getAllBudgets();
+      await syncBudgets(user.id, localBudgets);
+      const cloudBudgets = await fetchBudgets(user.id);
+      for (const cloudBudget of cloudBudgets) {
+        const exists = localBudgets.find(b => b.id === cloudBudget.id);
+        if (!exists) {
+          await database.addBudget(cloudBudget);
+        }
+      }
+      await useBudgets.getState().loadBudgets();
+    } catch (e) {
+      const msg = (e as any)?.message ?? String(e);
+      console.warn('Budgets sync skipped:', msg);
+    }
+
+    // Sync recurring transactions (non-fatal — table may not exist yet)
+    try {
+      const localRecurring = await database.getAllRecurringTransactions();
+      await syncRecurringTransactions(user.id, localRecurring);
+      const cloudRecurring = await fetchRecurringTransactions(user.id);
+      for (const cloudR of cloudRecurring) {
+        const exists = localRecurring.find(r => r.id === cloudR.id);
+        if (!exists) {
+          await database.addRecurringTransaction(cloudR);
+        }
+      }
+      await useRecurring.getState().loadRecurringTransactions();
+    } catch (e) {
+      const msg = (e as any)?.message ?? String(e);
+      console.warn('Recurring transactions sync skipped:', msg);
+    }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown sync error';
-    console.error('Sync error:', message);
-    throw new Error(`Sync failed: ${message}`);
+    const msg = (error as any)?.message ?? String(error);
+    console.error('Sync error:', msg);
+    throw new Error(`Sync failed: ${msg}`);
   }
 };
 
