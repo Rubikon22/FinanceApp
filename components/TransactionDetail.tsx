@@ -1,16 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Transaction } from '@/types';
-import { Colors } from '@/constants/colors';
+import { Colors, getThemeColors } from '@/constants/colors';
 import { getCategoryById } from '@/constants/categories';
 import { useAccounts } from '@/store/useAccounts';
 import { useTransactions } from '@/store/useTransactions';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { format } from 'date-fns';
 import { pl as dateFnsPl } from 'date-fns/locale';
-
-const SCREEN_HEIGHT = Dimensions.get('screen').height;
 
 interface TransactionDetailProps {
   transaction: Transaction | null;
@@ -25,6 +24,8 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
   onClose,
   onEdit,
 }) => {
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
   const getAccountById = useAccounts(state => state.getAccountById);
   const deleteTransaction = useTransactions(state => state.deleteTransaction);
   const loadAccounts = useAccounts(state => state.loadAccounts);
@@ -96,20 +97,21 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
     onClose();
   };
 
+  const styles = createStyles(colors);
+
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType="slide"
       transparent={true}
       onRequestClose={onClose}
-      statusBarTranslucent
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={Colors.text} />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Szczegoly</Text>
             <View style={styles.closeButton} />
@@ -132,7 +134,7 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
               <View style={styles.detailRow}>
                 <View style={styles.detailLeft}>
                   <View style={[styles.iconContainer, { backgroundColor: category.color }]}>
-                    <Ionicons name={category.icon as any} size={20} color={Colors.white} />
+                    <Ionicons name={category.icon as any} size={20} color={colors.white} />
                   </View>
                   <Text style={styles.detailLabel}>Kategoria</Text>
                 </View>
@@ -143,8 +145,8 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
             {/* Account */}
             <View style={styles.detailRow}>
               <View style={styles.detailLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: account?.color || Colors.gray }]}>
-                  <Ionicons name={(account?.icon || 'wallet') as any} size={20} color={Colors.white} />
+                <View style={[styles.iconContainer, { backgroundColor: account?.color || colors.gray }]}>
+                  <Ionicons name={(account?.icon || 'wallet') as any} size={20} color={colors.white} />
                 </View>
                 <Text style={styles.detailLabel}>
                   {transaction.type === 'transfer' ? 'Z konta' : 'Konto'}
@@ -158,7 +160,7 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
               <View style={styles.detailRow}>
                 <View style={styles.detailLeft}>
                   <View style={[styles.iconContainer, { backgroundColor: toAccount.color }]}>
-                    <Ionicons name={toAccount.icon as any} size={20} color={Colors.white} />
+                    <Ionicons name={toAccount.icon as any} size={20} color={colors.white} />
                   </View>
                   <Text style={styles.detailLabel}>Na konto</Text>
                 </View>
@@ -169,8 +171,8 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
             {/* Date */}
             <View style={styles.detailRow}>
               <View style={styles.detailLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: Colors.primary }]}>
-                  <Ionicons name="calendar" size={20} color={Colors.white} />
+                <View style={[styles.iconContainer, { backgroundColor: colors.primary }]}>
+                  <Ionicons name="calendar" size={20} color={colors.white} />
                 </View>
                 <Text style={styles.detailLabel}>Data</Text>
               </View>
@@ -199,14 +201,14 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
               style={[styles.actionButton, styles.editButton]}
               onPress={handleEdit}
             >
-              <Ionicons name="pencil" size={20} color={Colors.white} />
+              <Ionicons name="pencil" size={20} color={colors.white} />
               <Text style={styles.actionButtonText}>Edytuj</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.deleteButton]}
               onPress={handleDelete}
             >
-              <Ionicons name="trash" size={20} color={Colors.white} />
+              <Ionicons name="trash" size={20} color={colors.white} />
               <Text style={styles.actionButtonText}>Usun</Text>
             </TouchableOpacity>
           </View>
@@ -216,16 +218,14 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    height: SCREEN_HEIGHT,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    width: '100%',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
   },
   amountContainer: {
     alignItems: 'center',
@@ -265,10 +265,10 @@ const styles = StyleSheet.create({
   typeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.white,
+    color: colors.white,
   },
   detailsContainer: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   detailLeft: {
     flexDirection: 'row',
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   detailRight: {
     alignItems: 'flex-end',
@@ -303,11 +303,11 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
   },
   detailSubvalue: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
     textTransform: 'capitalize',
   },
@@ -316,12 +316,12 @@ const styles = StyleSheet.create({
   },
   noteLabel: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   noteText: {
     fontSize: 14,
-    color: Colors.text,
+    color: colors.text,
     lineHeight: 20,
   },
   actionsContainer: {
@@ -338,14 +338,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   editButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   deleteButton: {
-    backgroundColor: Colors.expense,
+    backgroundColor: colors.expense,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.white,
+    color: colors.white,
   },
 });

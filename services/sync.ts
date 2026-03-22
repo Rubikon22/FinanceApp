@@ -32,9 +32,20 @@ export const syncWithCloud = async (): Promise<void> => {
 
     // Fetch and merge cloud transactions
     const cloudTransactions = await fetchTransactions(user.id);
+    const cloudIds = new Set(cloudTransactions.map(t => t.id));
+
+    // Remove local transactions that no longer exist in the cloud (were deleted on another device)
+    for (const localTx of localTransactions) {
+      if (localTx.synced && !cloudIds.has(localTx.id)) {
+        await database.deleteTransaction(localTx.id);
+      }
+    }
+
+    // Add cloud transactions that don't exist locally
+    const updatedLocal = await database.getAllTransactions();
+    const localIds = new Set(updatedLocal.map(t => t.id));
     for (const cloudTx of cloudTransactions) {
-      const exists = localTransactions.find(t => t.id === cloudTx.id);
-      if (!exists) {
+      if (!localIds.has(cloudTx.id)) {
         await database.addTransaction(cloudTx);
       }
     }

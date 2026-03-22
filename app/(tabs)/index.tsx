@@ -9,7 +9,6 @@ import { Transaction } from '@/types';
 import { useTransactions } from '@/store/useTransactions';
 import { useTheme } from '@/store/useTheme';
 import { TransactionList } from '@/components/TransactionList';
-import { TransactionDetail } from '@/components/TransactionDetail';
 import { SearchFilterModal, SearchFilters } from '@/components/SearchFilter';
 import { SmartInsights } from '@/components/SmartInsights';
 import { generateSmartInsights } from '@/services/aiInsights';
@@ -21,8 +20,6 @@ export default function RecordsScreen() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSearchFilter, setShowSearchFilter] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [showTransactionDetail, setShowTransactionDetail] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
 
   const theme = useTheme(state => state.theme);
@@ -134,11 +131,6 @@ export default function RecordsScreen() {
   };
 
   const handleTransactionPress = (transaction: Transaction) => {
-    setSelectedTransaction(transaction);
-    setShowTransactionDetail(true);
-  };
-
-  const handleEditTransaction = (transaction: Transaction) => {
     router.push(`/edit-transaction?id=${transaction.id}`);
   };
 
@@ -345,15 +337,7 @@ export default function RecordsScreen() {
         refreshing={isLoading}
         onRefresh={handleRefresh}
         onTransactionPress={handleTransactionPress}
-        onEditTransaction={handleEditTransaction}
-      />
-
-      {/* Transaction Detail Modal */}
-      <TransactionDetail
-        transaction={selectedTransaction}
-        visible={showTransactionDetail}
-        onClose={() => setShowTransactionDetail(false)}
-        onEdit={handleEditTransaction}
+        onEditTransaction={handleTransactionPress}
       />
 
       {/* Calendar Modal */}

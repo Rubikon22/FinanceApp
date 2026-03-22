@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Transaction, TransactionType, PeriodType } from '@/types';
 import * as db from '@/services/database';
+import { deleteTransactionFromCloud } from '@/services/supabase';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
 
 interface SearchFilters {
@@ -152,6 +153,8 @@ export const useTransactions = create<TransactionsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await db.deleteTransaction(id);
+      // Delete from cloud in background (silently ignore if not authenticated)
+      deleteTransactionFromCloud(id).catch(() => {});
       set(state => ({
         transactions: state.transactions.filter(t => t.id !== id),
         isLoading: false,

@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { User } from '@/types';
 import { supabaseSignIn, supabaseSignUp, supabaseSignOut, getSupabaseUser } from '@/services/supabase';
+import * as database from '@/services/database';
+import { useTransactions } from '@/store/useTransactions';
+import { useAccounts } from '@/store/useAccounts';
 
 interface AuthState {
   user: User | null;
@@ -53,6 +56,11 @@ export const useAuth = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       await supabaseSignOut();
+      // Clear local SQLite data
+      await database.clearAllData();
+      // Clear Zustand in-memory state
+      useTransactions.setState({ transactions: [] });
+      useAccounts.setState({ accounts: [] });
       set({ user: null, isAuthenticated: false, isLoading: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Błąd wylogowania';

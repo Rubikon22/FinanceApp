@@ -414,8 +414,8 @@ export const clearAllData = async (): Promise<void> => {
   const database = await getDatabase();
   await database.execAsync(`
     DELETE FROM transactions;
+    DELETE FROM accounts;
     DELETE FROM recurring_transactions;
     DELETE FROM budgets;
-    UPDATE accounts SET balance = 0;
   `);
 };

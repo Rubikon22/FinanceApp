@@ -3,7 +3,8 @@
     "allow": [
       "Bash(head -20 /c/vizja/dyplom/apka/app/\\\\\\(tabs\\\\\\)/profile.tsx)",
       "Bash(ls /c/vizja/dyplom/apka/.env*)",
-      "Bash(npm install @supabase/supabase-js)"
+      "Bash(npm install @supabase/supabase-js)",
+      "Bash(ls /c/vizja/dyplom/apka/app/\\\\\\(tabs\\\\\\)/)"
     ]
   }
 }
