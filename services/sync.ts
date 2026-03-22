@@ -1,11 +1,17 @@
 import { useAuth } from '@/store/useAuth';
 import { useTransactions } from '@/store/useTransactions';
 import { useAccounts } from '@/store/useAccounts';
+import { useBudgets } from '@/store/useBudgets';
+import { useRecurring } from '@/store/useRecurring';
 import {
   syncTransactions,
   fetchTransactions,
   syncAccounts,
   fetchAccounts,
+  syncBudgets,
+  fetchBudgets,
+  syncRecurringTransactions,
+  fetchRecurringTransactions,
   onAuthChange,
 } from './supabase';
 import * as database from './database';
@@ -63,8 +69,32 @@ export const syncWithCloud = async (): Promise<void> => {
       }
     }
 
+    // Sync budgets
+    const localBudgets = await database.getAllBudgets();
+    await syncBudgets(user.id, localBudgets);
+    const cloudBudgets = await fetchBudgets(user.id);
+    for (const cloudBudget of cloudBudgets) {
+      const exists = localBudgets.find(b => b.id === cloudBudget.id);
+      if (!exists) {
+        await database.addBudget(cloudBudget);
+      }
+    }
+
+    // Sync recurring transactions
+    const localRecurring = await database.getAllRecurringTransactions();
+    await syncRecurringTransactions(user.id, localRecurring);
+    const cloudRecurring = await fetchRecurringTransactions(user.id);
+    for (const cloudR of cloudRecurring) {
+      const exists = localRecurring.find(r => r.id === cloudR.id);
+      if (!exists) {
+        await database.addRecurringTransaction(cloudR);
+      }
+    }
+
     await useTransactions.getState().loadTransactions();
     await useAccounts.getState().loadAccounts();
+    await useBudgets.getState().loadBudgets();
+    await useRecurring.getState().loadRecurringTransactions();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown sync error';
     console.error('Sync error:', message);

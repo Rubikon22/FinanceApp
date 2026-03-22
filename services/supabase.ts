@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Transaction, Account, User } from '@/types';
+import { Transaction, Account, User, Budget, RecurringTransaction } from '@/types';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_KEY!;
@@ -146,4 +146,83 @@ export const fetchAccounts = async (userId: string): Promise<Account[]> => {
 export const deleteAccountFromCloud = async (accountId: string): Promise<void> => {
   const { error } = await supabase.from('accounts').delete().eq('id', accountId);
   if (error) throw error;
+};
+
+// ---------- Budgets ----------
+
+export const syncBudgets = async (userId: string, budgets: Budget[]): Promise<void> => {
+  const rows = budgets.map(b => ({
+    id: b.id,
+    user_id: userId,
+    category_id: b.categoryId,
+    amount: b.amount,
+    period: b.period,
+    created_at: b.createdAt,
+  }));
+  const { error } = await supabase.from('budgets').upsert(rows, { onConflict: 'id' });
+  if (error) throw error;
+};
+
+export const fetchBudgets = async (userId: string): Promise<Budget[]> => {
+  const { data, error } = await supabase
+    .from('budgets')
+    .select('*')
+    .eq('user_id', userId);
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    id: row.id,
+    categoryId: row.category_id,
+    amount: row.amount,
+    period: row.period,
+    createdAt: row.created_at,
+  }));
+};
+
+export const deleteBudgetFromCloud = async (budgetId: string): Promise<void> => {
+  const { error } = await supabase.from('budgets').delete().eq('id', budgetId);
+  if (error) throw error;
+};
+
+// ---------- Recurring Transactions ----------
+
+export const syncRecurringTransactions = async (userId: string, recurring: RecurringTransaction[]): Promise<void> => {
+  const rows = recurring.map(r => ({
+    id: r.id,
+    user_id: userId,
+    type: r.type,
+    amount: r.amount,
+    category_id: r.categoryId,
+    account_id: r.accountId,
+    to_account_id: r.toAccountId ?? null,
+    note: r.note ?? null,
+    frequency: r.frequency,
+    next_occurrence: r.nextOccurrence,
+    last_processed: r.lastProcessed ?? null,
+    is_active: r.isActive,
+    created_at: r.createdAt,
+  }));
+  const { error } = await supabase.from('recurring_transactions').upsert(rows, { onConflict: 'id' });
+  if (error) throw error;
+};
+
+export const fetchRecurringTransactions = async (userId: string): Promise<RecurringTransaction[]> => {
+  const { data, error } = await supabase
+    .from('recurring_transactions')
+    .select('*')
+    .eq('user_id', userId);
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+    id: row.id,
+    type: row.type,
+    amount: row.amount,
+    categoryId: row.category_id,
+    accountId: row.account_id,
+    toAccountId: row.to_account_id ?? undefined,
+    note: row.note ?? undefined,
+    frequency: row.frequency,
+    nextOccurrence: row.next_occurrence,
+    lastProcessed: row.last_processed ?? undefined,
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at,
+  }));
 };

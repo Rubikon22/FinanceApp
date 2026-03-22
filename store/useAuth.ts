@@ -4,6 +4,8 @@ import { supabaseSignIn, supabaseSignUp, supabaseSignOut, getSupabaseUser } from
 import * as database from '@/services/database';
 import { useTransactions } from '@/store/useTransactions';
 import { useAccounts } from '@/store/useAccounts';
+import { useBudgets } from '@/store/useBudgets';
+import { useRecurring } from '@/store/useRecurring';
 
 interface AuthState {
   user: User | null;
@@ -61,6 +63,8 @@ export const useAuth = create<AuthState>((set) => ({
       // Clear Zustand in-memory state
       useTransactions.setState({ transactions: [] });
       useAccounts.setState({ accounts: [] });
+      useBudgets.setState({ budgets: [] });
+      useRecurring.setState({ recurringTransactions: [] });
       set({ user: null, isAuthenticated: false, isLoading: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Błąd wylogowania';
