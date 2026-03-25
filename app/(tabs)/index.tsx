@@ -21,6 +21,8 @@ export default function RecordsScreen() {
   const [showSearchFilter, setShowSearchFilter] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const [localMinAmount, setLocalMinAmount] = useState('');
+  const [localMaxAmount, setLocalMaxAmount] = useState('');
 
   const theme = useTheme(state => state.theme);
   const colors = getThemeColors(theme);
@@ -111,7 +113,23 @@ export default function RecordsScreen() {
       maxAmount: null,
     });
     setLocalSearchQuery('');
+    setLocalMinAmount('');
+    setLocalMaxAmount('');
   };
+
+  const handleMinAmountChange = useCallback((text: string) => {
+    const cleaned = text.replace(',', '.');
+    setLocalMinAmount(cleaned);
+    const value = parseFloat(cleaned);
+    setAdvancedFilters({ ...advancedFilters, minAmount: isNaN(value) || cleaned === '' ? null : value });
+  }, [advancedFilters, setAdvancedFilters]);
+
+  const handleMaxAmountChange = useCallback((text: string) => {
+    const cleaned = text.replace(',', '.');
+    setLocalMaxAmount(cleaned);
+    const value = parseFloat(cleaned);
+    setAdvancedFilters({ ...advancedFilters, maxAmount: isNaN(value) || cleaned === '' ? null : value });
+  }, [advancedFilters, setAdvancedFilters]);
 
   const handleApplyFilters = (filters: SearchFilters) => {
     setAdvancedFilters(filters);
@@ -231,6 +249,53 @@ export default function RecordsScreen() {
             color={hasAdvancedFilters ? colors.white : colors.primary}
           />
         </TouchableOpacity>
+      </View>
+
+      {/* Amount Filter Row */}
+      <View style={styles.amountFilterRow}>
+        <View style={[styles.amountFilterInput, { backgroundColor: colors.surface }]}>
+          <Ionicons name="trending-up" size={14} color={colors.income} />
+          <TextInput
+            style={[styles.amountFilterText, { color: colors.text }]}
+            value={localMinAmount}
+            onChangeText={handleMinAmountChange}
+            placeholder="Min zł"
+            placeholderTextColor={colors.textSecondary}
+            keyboardType="decimal-pad"
+          />
+          {localMinAmount.length > 0 && (
+            <TouchableOpacity onPress={() => handleMinAmountChange('')}>
+              <Ionicons name="close-circle" size={14} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={[styles.amountFilterInput, { backgroundColor: colors.surface }]}>
+          <Ionicons name="trending-down" size={14} color={colors.expense} />
+          <TextInput
+            style={[styles.amountFilterText, { color: colors.text }]}
+            value={localMaxAmount}
+            onChangeText={handleMaxAmountChange}
+            placeholder="Max zł"
+            placeholderTextColor={colors.textSecondary}
+            keyboardType="decimal-pad"
+          />
+          {localMaxAmount.length > 0 && (
+            <TouchableOpacity onPress={() => handleMaxAmountChange('')}>
+              <Ionicons name="close-circle" size={14} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={styles.amountFilterPresets}>
+          {[50, 100, 500].map(val => (
+            <TouchableOpacity
+              key={val}
+              style={[styles.presetChip, { backgroundColor: colors.surface }]}
+              onPress={() => handleMaxAmountChange(String(val))}
+            >
+              <Text style={[styles.presetChipText, { color: colors.textSecondary }]}>&lt;{val}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* Month Summary Card */}
@@ -442,6 +507,40 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  amountFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  amountFilterInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    gap: 6,
+    flex: 1,
+  },
+  amountFilterText: {
+    flex: 1,
+    fontSize: 13,
+    paddingVertical: 0,
+  },
+  amountFilterPresets: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  presetChip: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  presetChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   filterButtonActive: {
     backgroundColor: colors.primary,

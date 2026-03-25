@@ -3,6 +3,7 @@ import { useTransactions } from '@/store/useTransactions';
 import { useAccounts } from '@/store/useAccounts';
 import { useBudgets } from '@/store/useBudgets';
 import { useRecurring } from '@/store/useRecurring';
+import { useSyncStatus } from '@/store/useSyncStatus';
 import {
   syncTransactions,
   fetchTransactions,
@@ -15,32 +16,53 @@ import {
   onAuthChange,
 } from './supabase';
 import * as database from './database';
+import { isOnline, subscribeToNetwork } from './network';
+
+const extractMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  const msg = (error as any)?.message;
+  if (typeof msg === 'string') return msg;
+  return 'Brak połączenia z siecią';
+};
+
+/** Count how many local records are waiting to be synced. */
+const countPending = async (): Promise<number> => {
+  const txs = await database.getAllTransactions();
+  return txs.filter(t => !t.synced).length;
+};
 
 export const syncWithCloud = async (): Promise<void> => {
   const user = useAuth.getState().user;
   if (!user) return;
 
+  // Check connectivity before doing anything
+  const online = await isOnline();
+  if (!online) {
+    const pending = await countPending();
+    useSyncStatus.getState().setOffline(pending);
+    return;
+  }
+
+  useSyncStatus.getState().setSyncing();
+
   try {
-    // Upload unsynced local transactions
+    // ── Transactions ──────────────────────────────────────────
     const localTransactions = await database.getAllTransactions();
     const unsyncedTransactions = localTransactions.filter(t => !t.synced);
 
     if (unsyncedTransactions.length > 0) {
       await syncTransactions(user.id, unsyncedTransactions);
+      // Mark as synced in local DB
       for (const transaction of unsyncedTransactions) {
-        await database.updateTransaction({
-          ...transaction,
-          synced: true,
-          updatedAt: new Date().toISOString(),
-        });
+        await database.markTransactionSynced(transaction.id);
       }
     }
 
-    // Fetch and merge cloud transactions
+    // Fetch cloud transactions and reconcile
     const cloudTransactions = await fetchTransactions(user.id);
     const cloudIds = new Set(cloudTransactions.map(t => t.id));
 
-    // Remove local transactions that no longer exist in the cloud (were deleted on another device)
+    // Remove locally-synced transactions deleted elsewhere
     for (const localTx of localTransactions) {
       if (localTx.synced && !cloudIds.has(localTx.id)) {
         await database.deleteTransaction(localTx.id);
@@ -52,19 +74,17 @@ export const syncWithCloud = async (): Promise<void> => {
     const localIds = new Set(updatedLocal.map(t => t.id));
     for (const cloudTx of cloudTransactions) {
       if (!localIds.has(cloudTx.id)) {
-        await database.addTransaction(cloudTx);
+        await database.addTransaction({ ...cloudTx, synced: true });
       }
     }
 
-    // Upload accounts
+    // ── Accounts ──────────────────────────────────────────────
     const localAccounts = await database.getAllAccounts();
     await syncAccounts(user.id, localAccounts);
 
-    // Fetch and merge cloud accounts
     const cloudAccounts = await fetchAccounts(user.id);
     for (const cloudAcc of cloudAccounts) {
-      const exists = localAccounts.find(a => a.id === cloudAcc.id);
-      if (!exists) {
+      if (!localAccounts.find(a => a.id === cloudAcc.id)) {
         await database.addAccount(cloudAcc);
       }
     }
@@ -72,43 +92,41 @@ export const syncWithCloud = async (): Promise<void> => {
     await useTransactions.getState().loadTransactions();
     await useAccounts.getState().loadAccounts();
 
-    // Sync budgets (non-fatal — table may not exist yet)
+    // ── Budgets (non-fatal) ────────────────────────────────────
     try {
       const localBudgets = await database.getAllBudgets();
       await syncBudgets(user.id, localBudgets);
       const cloudBudgets = await fetchBudgets(user.id);
       for (const cloudBudget of cloudBudgets) {
-        const exists = localBudgets.find(b => b.id === cloudBudget.id);
-        if (!exists) {
+        if (!localBudgets.find(b => b.id === cloudBudget.id)) {
           await database.addBudget(cloudBudget);
         }
       }
       await useBudgets.getState().loadBudgets();
     } catch (e) {
-      const msg = (e as any)?.message ?? String(e);
-      console.warn('Budgets sync skipped:', msg);
+      console.warn('Budgets sync skipped:', extractMessage(e));
     }
 
-    // Sync recurring transactions (non-fatal — table may not exist yet)
+    // ── Recurring transactions (non-fatal) ────────────────────
     try {
       const localRecurring = await database.getAllRecurringTransactions();
       await syncRecurringTransactions(user.id, localRecurring);
       const cloudRecurring = await fetchRecurringTransactions(user.id);
       for (const cloudR of cloudRecurring) {
-        const exists = localRecurring.find(r => r.id === cloudR.id);
-        if (!exists) {
+        if (!localRecurring.find(r => r.id === cloudR.id)) {
           await database.addRecurringTransaction(cloudR);
         }
       }
       await useRecurring.getState().loadRecurringTransactions();
     } catch (e) {
-      const msg = (e as any)?.message ?? String(e);
-      console.warn('Recurring transactions sync skipped:', msg);
+      console.warn('Recurring transactions sync skipped:', extractMessage(e));
     }
+
+    useSyncStatus.getState().setSyncSuccess();
   } catch (error) {
-    const msg = (error as any)?.message ?? String(error);
+    const msg = extractMessage(error);
     console.error('Sync error:', msg);
-    throw new Error(`Sync failed: ${msg}`);
+    useSyncStatus.getState().setSyncError(msg);
   }
 };
 
@@ -116,7 +134,40 @@ export const setupAuthListener = (): (() => void) => {
   return onAuthChange((user) => {
     useAuth.getState().setUser(user);
     if (user) {
-      syncWithCloud().catch(console.error);
+      syncWithCloud();
+    }
+  });
+};
+
+/**
+ * Listen to network changes.
+ * When the connection is restored and the user is logged in, auto-sync.
+ * Returns an unsubscribe function to call on cleanup.
+ */
+export const setupNetworkListener = (): (() => void) => {
+  let wasOffline = false;
+
+  return subscribeToNetwork(async (online) => {
+    const user = useAuth.getState().user;
+
+    if (!online) {
+      wasOffline = true;
+      if (user) {
+        const pending = await countPending();
+        useSyncStatus.getState().setOffline(pending);
+      }
+      return;
+    }
+
+    // Just came back online
+    if (wasOffline) {
+      wasOffline = false;
+      if (user) {
+        // Small delay to let the connection stabilise
+        setTimeout(() => syncWithCloud(), 1500);
+      } else {
+        useSyncStatus.getState().clearError();
+      }
     }
   });
 };

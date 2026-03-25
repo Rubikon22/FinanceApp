@@ -3,6 +3,12 @@ import { Account } from '@/types';
 import * as db from '@/services/database';
 import { Colors } from '@/constants/colors';
 import { supabase, syncAccounts, deleteAccountFromCloud } from '@/services/supabase';
+import { useSyncStatus } from '@/store/useSyncStatus';
+
+const onSyncError = (error: unknown) => {
+  const msg = (error as any)?.message ?? String(error);
+  useSyncStatus.getState().setSyncError(msg);
+};
 
 const getCloudUserId = async (): Promise<string | null> => {
   const { data } = await supabase.auth.getSession();
@@ -94,7 +100,7 @@ export const useAccounts = create<AccountsState>((set, get) => ({
         isLoading: false,
       }));
       const userId = await getCloudUserId();
-      if (userId) syncAccounts(userId, [account]).catch(() => {});
+      if (userId) syncAccounts(userId, [account]).catch(onSyncError);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add account';
       set({ error: message, isLoading: false });
@@ -111,7 +117,7 @@ export const useAccounts = create<AccountsState>((set, get) => ({
         isLoading: false,
       }));
       const userId = await getCloudUserId();
-      if (userId) syncAccounts(userId, [account]).catch(() => {});
+      if (userId) syncAccounts(userId, [account]).catch(onSyncError);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update account';
       set({ error: message, isLoading: false });
@@ -127,7 +133,7 @@ export const useAccounts = create<AccountsState>((set, get) => ({
         accounts: state.accounts.filter(a => a.id !== id),
         isLoading: false,
       }));
-      deleteAccountFromCloud(id).catch(() => {});
+      deleteAccountFromCloud(id).catch(onSyncError);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete account';
       set({ error: message, isLoading: false });

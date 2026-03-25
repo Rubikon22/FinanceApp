@@ -170,6 +170,9 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
               <Text style={[styles.amount, { color: getAmountColor() }]}>
                 {getAmountPrefix()}{transaction.amount.toFixed(2)} {pl.common.currency}
               </Text>
+              {transaction.receiptUri && (
+                <Ionicons name="receipt-outline" size={13} color={colors.textSecondary} style={styles.receiptIcon} />
+              )}
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -258,5 +261,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
   amount: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  receiptIcon: {
+    marginTop: 4,
   },
 });

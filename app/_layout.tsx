@@ -8,7 +8,8 @@ import { pl } from '@/i18n/pl';
 import { useTransactions } from '@/store/useTransactions';
 import { useAccounts } from '@/store/useAccounts';
 import { useAuth } from '@/store/useAuth';
-import { setupAuthListener } from '@/services/sync';
+import { setupAuthListener, setupNetworkListener } from '@/services/sync';
+import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 
 export default function RootLayout() {
   const loadTransactions = useTransactions(state => state.loadTransactions);
@@ -30,13 +31,19 @@ export default function RootLayout() {
     initApp();
 
     // Listen for Supabase auth state changes (login/logout/session restore)
-    const unsubscribe = setupAuthListener();
-    return unsubscribe;
+    const unsubscribeAuth = setupAuthListener();
+    // Listen for network changes and auto-sync when back online
+    const unsubscribeNetwork = setupNetworkListener();
+    return () => {
+      unsubscribeAuth();
+      unsubscribeNetwork();
+    };
   }, []);
 
   return (
     <GestureHandlerRootView style={styles.container}>
       <StatusBar style="light" />
+      <SyncStatusBanner />
       <Stack
         screenOptions={{
           headerShown: false,

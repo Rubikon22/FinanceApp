@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { Budget } from '@/types';
 import * as db from '@/services/database';
 import { supabase, syncBudgets, deleteBudgetFromCloud } from '@/services/supabase';
+import { useSyncStatus } from '@/store/useSyncStatus';
+
+const onSyncError = (error: unknown) => {
+  const msg = (error as any)?.message ?? String(error);
+  useSyncStatus.getState().setSyncError(msg);
+};
 
 const getCloudUserId = async (): Promise<string | null> => {
   const { data } = await supabase.auth.getSession();
@@ -71,7 +77,7 @@ export const useBudgets = create<BudgetsState>((set, get) => ({
         isLoading: false,
       }));
       const userId = await getCloudUserId();
-      if (userId) syncBudgets(userId, [budget]).catch(() => {});
+      if (userId) syncBudgets(userId, [budget]).catch(onSyncError);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add budget';
       set({ error: message, isLoading: false });
@@ -88,7 +94,7 @@ export const useBudgets = create<BudgetsState>((set, get) => ({
         isLoading: false,
       }));
       const userId = await getCloudUserId();
-      if (userId) syncBudgets(userId, [budget]).catch(() => {});
+      if (userId) syncBudgets(userId, [budget]).catch(onSyncError);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update budget';
       set({ error: message, isLoading: false });
@@ -104,7 +110,7 @@ export const useBudgets = create<BudgetsState>((set, get) => ({
         budgets: state.budgets.filter(b => b.id !== id),
         isLoading: false,
       }));
-      deleteBudgetFromCloud(id).catch(() => {});
+      deleteBudgetFromCloud(id).catch(onSyncError);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete budget';
       set({ error: message, isLoading: false });

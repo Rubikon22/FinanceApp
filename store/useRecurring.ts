@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { RecurringTransaction, RecurringFrequency, TransactionType } from '@/types';
 import * as db from '@/services/database';
 import { supabase, syncRecurringTransactions } from '@/services/supabase';
+import { useSyncStatus } from '@/store/useSyncStatus';
+
+const onSyncError = (error: unknown) => {
+  const msg = (error as any)?.message ?? String(error);
+  useSyncStatus.getState().setSyncError(msg);
+};
 import { addDays, addWeeks, addMonths, addYears, format } from 'date-fns';
 
 const getCloudUserId = async (): Promise<string | null> => {
@@ -80,7 +86,7 @@ export const useRecurring = create<RecurringState>((set, get) => ({
         isLoading: false,
       }));
       const userId = await getCloudUserId();
-      if (userId) syncRecurringTransactions(userId, [recurring]).catch(() => {});
+      if (userId) syncRecurringTransactions(userId, [recurring]).catch(onSyncError);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add recurring transaction';
       set({ error: message, isLoading: false });
@@ -99,7 +105,7 @@ export const useRecurring = create<RecurringState>((set, get) => ({
         isLoading: false,
       }));
       const userId = await getCloudUserId();
-      if (userId) syncRecurringTransactions(userId, [recurring]).catch(() => {});
+      if (userId) syncRecurringTransactions(userId, [recurring]).catch(onSyncError);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update recurring transaction';
       set({ error: message, isLoading: false });
@@ -118,7 +124,9 @@ export const useRecurring = create<RecurringState>((set, get) => ({
       // Delete from cloud in background
       const userId = await getCloudUserId();
       if (userId) {
-        supabase.from('recurring_transactions').delete().eq('id', id).then(() => {});
+        supabase.from('recurring_transactions').delete().eq('id', id).then(({ error }) => {
+          if (error) onSyncError(error);
+        });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete recurring transaction';

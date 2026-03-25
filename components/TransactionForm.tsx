@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { pl as dateFnsPl } from 'date-fns/locale';
 import { getCategorySuggestion } from '@/services/aiCategorization';
 import { getCategoryById } from '@/constants/categories';
+import { ReceiptPicker } from '@/components/ReceiptPicker';
 
 type TabType = 'expense' | 'income' | 'transfer';
 
@@ -36,6 +37,7 @@ export interface TransactionFormData {
   toAccountId?: string;
   note?: string;
   date: string;
+  receiptUri?: string;
 }
 
 export interface TransactionFormInitialValues {
@@ -46,6 +48,7 @@ export interface TransactionFormInitialValues {
   toAccount: Account | null;
   note: string;
   date: Date;
+  receiptUri?: string;
 }
 
 interface TransactionFormProps {
@@ -65,6 +68,7 @@ const DEFAULT_INITIAL_VALUES: TransactionFormInitialValues = {
   toAccount: null,
   note: '',
   date: new Date(),
+  receiptUri: undefined,
 };
 
 const TABS: { key: TabType; label: string; color: string }[] = [
@@ -91,6 +95,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [note, setNote] = useState(initialValues.note);
   const [date, setDate] = useState(initialValues.date);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [receiptUri, setReceiptUri] = useState<string | null>(initialValues.receiptUri ?? null);
   const [aiSuggestion, setAiSuggestion] = useState<{
     categoryId: string;
     confidence: 'high' | 'medium' | 'low';
@@ -187,6 +192,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         toAccountId: activeTab === 'transfer' ? selectedToAccount?.id : undefined,
         note: note.trim() || undefined,
         date: format(date, 'yyyy-MM-dd'),
+        receiptUri: receiptUri ?? undefined,
       });
     } catch (error) {
       Alert.alert(pl.errors.errorTitle, pl.errors.saveFailed);
@@ -320,6 +326,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
             )}
+          </View>
+
+          {/* Receipt Photo */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Zdjęcie paragonu</Text>
+            <ReceiptPicker uri={receiptUri} onChange={setReceiptUri} />
           </View>
 
           {/* Date */}

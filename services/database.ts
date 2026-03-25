@@ -72,6 +72,13 @@ const initDatabase = async () => {
     );
   `);
 
+  // Migrations: add columns that may not exist in older DB versions
+  const txColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(transactions)');
+  const txColumnNames = txColumns.map(c => c.name);
+  if (!txColumnNames.includes('receiptUri')) {
+    await db.execAsync('ALTER TABLE transactions ADD COLUMN receiptUri TEXT');
+  }
+
   const accounts = await db.getAllAsync<Account>('SELECT * FROM accounts');
   if (accounts.length === 0) {
     for (const account of DEFAULT_ACCOUNTS) {
@@ -108,8 +115,8 @@ export const getTransactionsByDateRange = async (startDate: string, endDate: str
 export const addTransaction = async (transaction: Transaction): Promise<void> => {
   const database = await getDatabase();
   await database.runAsync(
-    `INSERT INTO transactions (id, type, amount, categoryId, accountId, toAccountId, note, date, createdAt, updatedAt, synced)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO transactions (id, type, amount, categoryId, accountId, toAccountId, note, date, receiptUri, createdAt, updatedAt, synced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       transaction.id,
       transaction.type,
@@ -119,6 +126,7 @@ export const addTransaction = async (transaction: Transaction): Promise<void> =>
       transaction.toAccountId || null,
       transaction.note || null,
       transaction.date,
+      transaction.receiptUri || null,
       transaction.createdAt,
       transaction.updatedAt,
       transaction.synced ? 1 : 0,
@@ -184,7 +192,7 @@ export const updateTransaction = async (transaction: Transaction): Promise<void>
   // Update the transaction record
   await database.runAsync(
     `UPDATE transactions SET type = ?, amount = ?, categoryId = ?, accountId = ?, toAccountId = ?,
-     note = ?, date = ?, updatedAt = ?, synced = ? WHERE id = ?`,
+     note = ?, date = ?, receiptUri = ?, updatedAt = ?, synced = ? WHERE id = ?`,
     [
       transaction.type,
       transaction.amount,
@@ -193,6 +201,7 @@ export const updateTransaction = async (transaction: Transaction): Promise<void>
       transaction.toAccountId || null,
       transaction.note || null,
       transaction.date,
+      transaction.receiptUri || null,
       transaction.updatedAt,
       transaction.synced ? 1 : 0,
       transaction.id,
@@ -220,6 +229,14 @@ export const updateTransaction = async (transaction: Transaction): Promise<void>
       [transaction.amount, transaction.toAccountId]
     );
   }
+};
+
+export const markTransactionSynced = async (id: string): Promise<void> => {
+  const database = await getDatabase();
+  await database.runAsync(
+    'UPDATE transactions SET synced = 1, updatedAt = ? WHERE id = ?',
+    [new Date().toISOString(), id]
+  );
 };
 
 export const deleteTransaction = async (id: string): Promise<void> => {

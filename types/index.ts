@@ -9,6 +9,7 @@ export interface Transaction {
   toAccountId?: string;
   note?: string;
   date: string;
+  receiptUri?: string;
   createdAt: string;
   updatedAt: string;
   synced: boolean;

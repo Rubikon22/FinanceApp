@@ -24,6 +24,7 @@ export default function AddTransactionScreen() {
         toAccountId: data.toAccountId,
         note: data.note,
         date: data.date,
+        receiptUri: data.receiptUri,
       });
       await loadAccounts();
       router.back();

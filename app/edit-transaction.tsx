@@ -47,6 +47,7 @@ export default function EditTransactionScreen() {
       toAccount,
       note: transaction.note || '',
       date: new Date(transaction.date),
+      receiptUri: transaction.receiptUri,
     };
   }, [transaction]);
 
@@ -67,6 +68,7 @@ export default function EditTransactionScreen() {
         toAccountId: data.toAccountId,
         note: data.note,
         date: data.date,
+        receiptUri: data.receiptUri,
       });
       await loadAccounts();
       router.back();
