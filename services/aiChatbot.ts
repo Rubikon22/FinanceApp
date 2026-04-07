@@ -1,12 +1,16 @@
 /**
- * AI Chatbot Service for natural language financial queries
- * Handles text and voice commands for managing finances
+ * AI Chatbot Service — powered by Claude API
+ * Supports: natural language understanding, conversation history,
+ * direct transaction creation via tool_use
  */
 
-import { Transaction } from '@/types';
-import { getCategoryById, ALL_CATEGORIES } from '@/constants/categories';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { Transaction, TransactionType } from '@/types';
+import { ALL_CATEGORIES, getCategoryById } from '@/constants/categories';
+import { callClaude, isApiKeySet, ClaudeMessage, ClaudeContentBlock, ClaudeTool } from './claudeApi';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, format } from 'date-fns';
 import { pl as dateFnsPl } from 'date-fns/locale';
+
+// ── Public types ───────────────────────────────────────────────
 
 export interface ChatMessage {
   id: string;
@@ -17,357 +21,316 @@ export interface ChatMessage {
 }
 
 export interface ChatAction {
-  type: 'add_transaction' | 'show_balance' | 'show_stats' | 'show_category_spending';
+  type: 'add_transaction' | 'show_balance' | 'show_stats' | 'show_category_spending' | 'transaction_added';
   data?: any;
 }
 
-/**
- * Parse user query and extract intent
- */
-function parseQuery(query: string): {
-  intent: string;
-  entities: Record<string, any>;
-} {
-  const normalizedQuery = query.toLowerCase().trim();
+// ── Tools exposed to Claude ────────────────────────────────────
 
-  // Intent: Add transaction
-  if (
-    normalizedQuery.includes('dodaj') ||
-    normalizedQuery.includes('zapisz') ||
-    normalizedQuery.includes('wydatek') ||
-    normalizedQuery.includes('wydalem') ||
-    normalizedQuery.includes('wydałem') ||
-    normalizedQuery.includes('zaplacil') ||
-    normalizedQuery.includes('zapłaciłem')
-  ) {
-    return {
-      intent: 'add_transaction',
-      entities: extractTransactionEntities(normalizedQuery),
-    };
-  }
+const TOOLS: ClaudeTool[] = [
+  {
+    name: 'add_transaction',
+    description:
+      'Dodaje nową transakcję (wydatek lub przychód) bezpośrednio do systemu. ' +
+      'Użyj gdy użytkownik prosi o dodanie/zapisanie transakcji.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        type: {
+          type: 'string',
+          enum: ['expense', 'income'],
+          description: 'Typ transakcji',
+        },
+        amount: {
+          type: 'number',
+          description: 'Kwota w PLN (zawsze dodatnia)',
+        },
+        categoryId: {
+          type: 'string',
+          enum: ALL_CATEGORIES.map(c => c.id),
+          description:
+            'ID kategorii. Dostępne: ' +
+            ALL_CATEGORIES.map(c => `${c.id} (${c.name})`).join(', '),
+        },
+        note: {
+          type: 'string',
+          description: 'Opcjonalny opis transakcji',
+        },
+      },
+      required: ['type', 'amount', 'categoryId'],
+    },
+  },
+];
 
-  // Intent: Show balance
-  if (
-    normalizedQuery.includes('bilans') ||
-    normalizedQuery.includes('saldo') ||
-    normalizedQuery.includes('balance') ||
-    normalizedQuery.includes('ile mam')
-  ) {
-    return {
-      intent: 'show_balance',
-      entities: {},
-    };
-  }
+// ── System prompt builder ──────────────────────────────────────
 
-  // Intent: Show category spending
-  if (
-    normalizedQuery.includes('wydatki') ||
-    normalizedQuery.includes('wydat') ||
-    normalizedQuery.includes('ile wyda') ||
-    normalizedQuery.includes('ile potrat') ||
-    normalizedQuery.includes('ile potraciłem')
-  ) {
-    return {
-      intent: 'show_category_spending',
-      entities: extractCategoryEntities(normalizedQuery),
-    };
-  }
+function buildSystemPrompt(
+  transactions: Transaction[],
+  accounts: { name: string; balance: number }[],
+): string {
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
 
-  // Intent: Show stats
-  if (
-    normalizedQuery.includes('statystyki') ||
-    normalizedQuery.includes('podsumowanie') ||
-    normalizedQuery.includes('raport')
-  ) {
-    return {
-      intent: 'show_stats',
-      entities: extractTimeEntities(normalizedQuery),
-    };
-  }
+  const monthTx = transactions.filter(t => {
+    const d = new Date(t.date);
+    return d >= monthStart && d <= monthEnd;
+  });
 
-  // Default: unknown
-  return {
-    intent: 'unknown',
-    entities: {},
+  const totalIncome = monthTx
+    .filter(t => t.type === 'income')
+    .reduce((s, t) => s + t.amount, 0);
+  const totalExpenses = monthTx
+    .filter(t => t.type === 'expense')
+    .reduce((s, t) => s + t.amount, 0);
+
+  // Top 5 expense categories this month
+  const catMap = new Map<string, number>();
+  monthTx
+    .filter(t => t.type === 'expense')
+    .forEach(t => catMap.set(t.categoryId, (catMap.get(t.categoryId) || 0) + t.amount));
+  const topCats = Array.from(catMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, amt]) => `${getCategoryById(id)?.name || id}: ${amt.toFixed(2)} PLN`)
+    .join(', ');
+
+  const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
+  const accountsList = accounts.map(a => `${a.name}: ${a.balance.toFixed(2)} PLN`).join(', ');
+
+  return `Jesteś asystentem finansowym w polskiej aplikacji mobilnej do zarządzania finansami osobistymi.
+
+AKTUALNA DATA: ${format(now, 'd MMMM yyyy', { locale: dateFnsPl })}
+
+KONTA UŻYTKOWNIKA: ${accountsList}
+ŁĄCZNE SALDO: ${totalBalance.toFixed(2)} PLN
+
+PODSUMOWANIE BIEŻĄCEGO MIESIĄCA (${format(now, 'LLLL yyyy', { locale: dateFnsPl })}):
+- Przychody: +${totalIncome.toFixed(2)} PLN
+- Wydatki: -${totalExpenses.toFixed(2)} PLN
+- Bilans: ${(totalIncome - totalExpenses).toFixed(2)} PLN
+- Liczba transakcji: ${monthTx.length}
+- Top kategorie wydatków: ${topCats || 'brak'}
+
+DOSTĘPNE KATEGORIE WYDATKÓW: ${ALL_CATEGORIES.filter(c => c.type === 'expense').map(c => `${c.id} (${c.name})`).join(', ')}
+DOSTĘPNE KATEGORIE PRZYCHODÓW: ${ALL_CATEGORIES.filter(c => c.type === 'income').map(c => `${c.id} (${c.name})`).join(', ')}
+
+ZASADY:
+- Odpowiadaj ZAWSZE po polsku
+- Bądź zwięzły i konkretny
+- Gdy użytkownik prosi o dodanie transakcji, użyj narzędzia add_transaction — NIE proś go o przejście do formularza
+- Domyślny typ to 'expense', chyba że użytkownik wyraźnie mówi o przychodzie
+- Domyślne konto to pierwsze konto użytkownika
+- Możesz analizować wydatki, doradzać, odpowiadać na pytania o finanse
+- Formatuj kwoty z dokładnością do 2 miejsc po przecinku i dodawaj "PLN"
+- Dla danych których nie masz, odpowiedz że nie masz tych informacji
+
+DANE HISTORYCZNE (ostatnie 50 transakcji):
+${transactions
+  .slice(0, 50)
+  .map(t => {
+    const cat = getCategoryById(t.categoryId);
+    return `${t.date} | ${t.type} | ${t.amount.toFixed(2)} PLN | ${cat?.name || t.categoryId}${t.note ? ' | ' + t.note : ''}`;
+  })
+  .join('\n')}`;
+}
+
+// ── Conversation history → Claude messages format ──────────────
+
+function chatHistoryToClaudeMessages(history: ChatMessage[]): ClaudeMessage[] {
+  return history
+    .filter(m => m.id !== 'welcome') // skip the static welcome message
+    .map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+}
+
+// ── Main entry point ───────────────────────────────────────────
+
+export interface ProcessQueryResult {
+  reply: ChatMessage;
+  /** If the assistant created a transaction via tool, its data is here */
+  transactionToAdd?: {
+    type: TransactionType;
+    amount: number;
+    categoryId: string;
+    note?: string;
   };
 }
 
-/**
- * Extract transaction details from query
- */
-function extractTransactionEntities(query: string): Record<string, any> {
-  const entities: Record<string, any> = {};
-
-  // Extract amount (patterns: "50 zł", "50 zlotych", "50 pln")
-  const amountMatch = query.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:zł|złotych|pln|zlotych)?/);
-  if (amountMatch) {
-    entities.amount = parseFloat(amountMatch[1].replace(',', '.'));
-  }
-
-  // Extract category keywords
-  ALL_CATEGORIES.forEach(cat => {
-    const catName = cat.name.toLowerCase();
-    if (query.includes(catName)) {
-      entities.category = cat.id;
-    }
-  });
-
-  // Specific keywords for categories
-  if (query.includes('taxi') || query.includes('taksi') || query.includes('uber') || query.includes('bolt')) {
-    entities.category = 'transport';
-  }
-  if (query.includes('kawa') || query.includes('kawiarnia') || query.includes('restauracja')) {
-    entities.category = 'food';
-  }
-  if (query.includes('netflix') || query.includes('spotify') || query.includes('kino')) {
-    entities.category = 'entertainment';
-  }
-
-  return entities;
-}
-
-/**
- * Extract category from query
- */
-function extractCategoryEntities(query: string): Record<string, any> {
-  const entities: Record<string, any> = {};
-
-  ALL_CATEGORIES.forEach(cat => {
-    const catName = cat.name.toLowerCase();
-    if (query.includes(catName)) {
-      entities.category = cat.id;
-    }
-  });
-
-  // Specific keywords
-  if (query.includes('jedzenie') || query.includes('żywność') || query.includes('zywnosc')) {
-    entities.category = 'food';
-  }
-  if (query.includes('transport') || query.includes('przejazd')) {
-    entities.category = 'transport';
-  }
-
-  return entities;
-}
-
-/**
- * Extract time period from query
- */
-function extractTimeEntities(query: string): Record<string, any> {
-  const entities: Record<string, any> = {};
-
-  if (query.includes('ten miesiąc') || query.includes('ten miesiac') || query.includes('w tym miesiacu')) {
-    entities.period = 'current_month';
-  } else if (query.includes('ostatni miesiąc') || query.includes('ostatni miesiac') || query.includes('zeszły')) {
-    entities.period = 'last_month';
-  } else if (query.includes('dzisiaj') || query.includes('dziś')) {
-    entities.period = 'today';
-  } else if (query.includes('tydzień') || query.includes('tydzien')) {
-    entities.period = 'week';
-  }
-
-  return entities;
-}
-
-/**
- * Process user query and generate response
- */
 export async function processQuery(
   query: string,
   transactions: Transaction[],
-  accounts: { id: string; balance: number }[]
-): Promise<ChatMessage> {
-  const { intent, entities } = parseQuery(query);
+  accounts: { name: string; balance: number }[],
+  conversationHistory: ChatMessage[] = [],
+): Promise<ProcessQueryResult> {
+  // If no API key, fall back to simple local processing
+  if (!isApiKeySet()) {
+    return processQueryLocal(query, transactions, accounts);
+  }
+
+  const system = buildSystemPrompt(transactions, accounts);
+
+  // Build Claude messages from conversation history + new user message
+  const claudeMessages: ClaudeMessage[] = [
+    ...chatHistoryToClaudeMessages(conversationHistory),
+    { role: 'user', content: query },
+  ];
 
   const messageId = `msg-${Date.now()}`;
   const timestamp = new Date();
 
-  switch (intent) {
-    case 'add_transaction':
-      return handleAddTransaction(messageId, timestamp, entities);
+  try {
+    const response = await callClaude(claudeMessages, system, TOOLS);
 
-    case 'show_balance':
-      return handleShowBalance(messageId, timestamp, accounts);
+    // Check if Claude wants to use a tool
+    const toolUseBlock = response.content.find(
+      (b): b is ClaudeContentBlock & { type: 'tool_use' } => b.type === 'tool_use',
+    );
 
-    case 'show_category_spending':
-      return handleShowCategorySpending(messageId, timestamp, entities, transactions);
+    if (toolUseBlock && toolUseBlock.name === 'add_transaction') {
+      const input = toolUseBlock.input!;
+      const category = getCategoryById(input.categoryId);
 
-    case 'show_stats':
-      return handleShowStats(messageId, timestamp, entities, transactions);
+      // Send tool result back to Claude and get final text response
+      const followUpMessages: ClaudeMessage[] = [
+        ...claudeMessages,
+        {
+          role: 'assistant',
+          content: response.content as any,
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: toolUseBlock.id!,
+              content: `Transakcja dodana pomyślnie: ${input.type === 'income' ? 'przychód' : 'wydatek'} ${input.amount.toFixed(2)} PLN, kategoria: ${category?.name || input.categoryId}${input.note ? ', opis: ' + input.note : ''}`,
+            },
+          ],
+        },
+      ];
 
-    default:
+      const finalResponse = await callClaude(followUpMessages, system, TOOLS);
+      const textBlock = finalResponse.content.find(b => b.type === 'text');
+
       return {
+        reply: {
+          id: messageId,
+          role: 'assistant',
+          content: textBlock?.text || `Dodano ${input.type === 'income' ? 'przychód' : 'wydatek'}: ${input.amount.toFixed(2)} PLN (${category?.name || input.categoryId})`,
+          timestamp,
+          action: {
+            type: 'transaction_added',
+            data: input,
+          },
+        },
+        transactionToAdd: {
+          type: input.type as TransactionType,
+          amount: input.amount,
+          categoryId: input.categoryId,
+          note: input.note,
+        },
+      };
+    }
+
+    // Regular text response
+    const textBlock = response.content.find(b => b.type === 'text');
+
+    return {
+      reply: {
         id: messageId,
         role: 'assistant',
-        content: 'Przepraszam, nie rozumiem. Spróbuj zapytać:\n\n' +
-          '• "Dodaj wydatek 50 zł na taxi"\n' +
-          '• "Ile wydałem na jedzenie w tym miesiącu?"\n' +
-          '• "Pokaz moj bilans"\n' +
-          '• "Podsumowanie tego miesiąca"',
+        content: textBlock?.text || 'Nie mogę odpowiedzieć na to pytanie.',
         timestamp,
-      };
-  }
-}
-
-function handleAddTransaction(
-  id: string,
-  timestamp: Date,
-  entities: Record<string, any>
-): ChatMessage {
-  if (!entities.amount) {
-    return {
-      id,
-      role: 'assistant',
-      content: 'Nie wykryłem kwoty. Spróbuj np: "Dodaj wydatek 50 zł na taxi"',
-      timestamp,
-    };
-  }
-
-  const category = entities.category || 'other_expense';
-  const categoryObj = getCategoryById(category);
-
-  return {
-    id,
-    role: 'assistant',
-    content: `Rozumiem! Chcesz dodać wydatek ${entities.amount.toFixed(2)} PLN w kategorii "${categoryObj?.name || 'Inne'}".\n\nKliknij przycisk poniżej, aby dodać tę transakcję.`,
-    timestamp,
-    action: {
-      type: 'add_transaction',
-      data: {
-        amount: entities.amount,
-        categoryId: category,
       },
-    },
-  };
+    };
+  } catch (error) {
+    console.error('Claude API error:', error);
+    // Fall back to local processing on API error
+    return processQueryLocal(query, transactions, accounts);
+  }
 }
 
-function handleShowBalance(
-  id: string,
-  timestamp: Date,
-  accounts: { id: string; balance: number }[]
-): ChatMessage {
-  const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+// ── Fallback: local keyword-based processing (no API key) ──────
 
-  return {
-    id,
-    role: 'assistant',
-    content: `Twój aktualny bilans to **${totalBalance.toFixed(2)} PLN**\n\n` +
-      accounts.map(acc => `• ${acc.id}: ${acc.balance.toFixed(2)} PLN`).join('\n'),
-    timestamp,
-    action: {
-      type: 'show_balance',
-    },
-  };
-}
+function processQueryLocal(
+  query: string,
+  transactions: Transaction[],
+  accounts: { name: string; balance: number }[],
+): ProcessQueryResult {
+  const q = query.toLowerCase().trim();
+  const messageId = `msg-${Date.now()}`;
+  const timestamp = new Date();
 
-function handleShowCategorySpending(
-  id: string,
-  timestamp: Date,
-  entities: Record<string, any>,
-  transactions: Transaction[]
-): ChatMessage {
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
-
-  const monthTx = transactions.filter(t => {
-    const date = new Date(t.date);
-    return date >= monthStart && date <= monthEnd && t.type === 'expense';
-  });
-
-  if (entities.category) {
-    const categoryTx = monthTx.filter(t => t.categoryId === entities.category);
-    const total = categoryTx.reduce((sum, t) => sum + t.amount, 0);
-    const category = getCategoryById(entities.category);
-
+  // Balance
+  if (q.includes('bilans') || q.includes('saldo') || q.includes('ile mam')) {
+    const total = accounts.reduce((s, a) => s + a.balance, 0);
     return {
-      id,
-      role: 'assistant',
-      content: `W tym miesiącu wydałeś **${total.toFixed(2)} PLN** na ${category?.name || 'tę kategorię'}.\n\n` +
-        `Liczba transakcji: ${categoryTx.length}`,
-      timestamp,
-      action: {
-        type: 'show_category_spending',
-        data: { categoryId: entities.category },
+      reply: {
+        id: messageId,
+        role: 'assistant',
+        content:
+          `Twój aktualny bilans to **${total.toFixed(2)} PLN**\n\n` +
+          accounts.map(a => `• ${a.name}: ${a.balance.toFixed(2)} PLN`).join('\n'),
+        timestamp,
+        action: { type: 'show_balance' },
       },
     };
   }
 
-  // Show all categories
-  const categoryMap = new Map<string, number>();
-  monthTx.forEach(t => {
-    const current = categoryMap.get(t.categoryId) || 0;
-    categoryMap.set(t.categoryId, current + t.amount);
-  });
+  // Stats
+  if (q.includes('statystyki') || q.includes('podsumowanie') || q.includes('raport')) {
+    const now = new Date();
+    const mStart = startOfMonth(now);
+    const mEnd = endOfMonth(now);
+    const mTx = transactions.filter(t => {
+      const d = new Date(t.date);
+      return d >= mStart && d <= mEnd;
+    });
+    const income = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const expenses = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-  const sorted = Array.from(categoryMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-
-  const content = sorted.map(([catId, amount]) => {
-    const cat = getCategoryById(catId);
-    return `• ${cat?.name || catId}: ${amount.toFixed(2)} PLN`;
-  }).join('\n');
-
-  return {
-    id,
-    role: 'assistant',
-    content: `Twoje wydatki w tym miesiącu:\n\n${content}`,
-    timestamp,
-    action: {
-      type: 'show_category_spending',
-    },
-  };
-}
-
-function handleShowStats(
-  id: string,
-  timestamp: Date,
-  entities: Record<string, any>,
-  transactions: Transaction[]
-): ChatMessage {
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
-
-  const monthTx = transactions.filter(t => {
-    const date = new Date(t.date);
-    return date >= monthStart && date <= monthEnd;
-  });
-
-  const income = monthTx
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const expenses = monthTx
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const balance = income - expenses;
+    return {
+      reply: {
+        id: messageId,
+        role: 'assistant',
+        content:
+          `Podsumowanie ${format(now, 'LLLL yyyy', { locale: dateFnsPl })}:\n\n` +
+          `Przychody: +${income.toFixed(2)} PLN\n` +
+          `Wydatki: -${expenses.toFixed(2)} PLN\n` +
+          `Bilans: ${(income - expenses).toFixed(2)} PLN`,
+        timestamp,
+        action: { type: 'show_stats' },
+      },
+    };
+  }
 
   return {
-    id,
-    role: 'assistant',
-    content: `📊 Podsumowanie ${format(now, 'LLLL yyyy', { locale: dateFnsPl })}:\n\n` +
-      `💰 Przychody: +${income.toFixed(2)} PLN\n` +
-      `💸 Wydatki: -${expenses.toFixed(2)} PLN\n` +
-      `📈 Bilans: ${balance >= 0 ? '+' : ''}${balance.toFixed(2)} PLN`,
-    timestamp,
-    action: {
-      type: 'show_stats',
+    reply: {
+      id: messageId,
+      role: 'assistant',
+      content:
+        'Tryb offline — brak klucza API Claude.\n\n' +
+        'Ustaw klucz API w services/claudeApi.ts aby odblokować pełne możliwości AI.\n\n' +
+        'Dostępne komendy offline:\n' +
+        '• "Pokaż bilans"\n' +
+        '• "Podsumowanie miesiąca"',
+      timestamp,
     },
   };
 }
 
 /**
- * Generate quick reply suggestions
+ * Quick reply suggestions
  */
 export function getQuickReplies(): string[] {
   return [
-    'Pokaz bilans',
+    'Pokaż bilans',
     'Ile wydałem na jedzenie?',
-    'Dodaj wydatek 50 zł',
+    'Dodaj wydatek 50 zł na taxi',
     'Podsumowanie miesiąca',
-    'Wydatki tego tygodnia',
+    'Porady jak oszczędzać',
   ];
 }

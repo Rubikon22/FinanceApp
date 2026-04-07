@@ -12,7 +12,9 @@
       "Bash(cmd.exe /c \"cd C:\\\\vizja\\\\dyplom\\\\apka\\\\android && gradlew.bat app:assembleDebug -x lint -x test 2>&1\")",
       "Bash(powershell.exe -Command \"cd ''C:\\\\vizja\\\\dyplom\\\\apka\\\\android''; .\\\\gradlew.bat app:assembleDebug -x lint -x test 2>&1 | Select-String -Pattern ''error|Error|FAILED|Caused by|> Task'' | Select-Object -Last 50\")",
       "Bash(npm uninstall:*)",
-      "Bash(powershell.exe -Command \"\\(Get-Content ''C:\\\\vizja\\\\dyplom\\\\apka\\\\store\\\\useTransactions.ts''\\) -notmatch ''refreshWidget'' | Set-Content ''C:\\\\vizja\\\\dyplom\\\\apka\\\\store\\\\useTransactions.ts''\")"
+      "Bash(powershell.exe -Command \"\\(Get-Content ''C:\\\\vizja\\\\dyplom\\\\apka\\\\store\\\\useTransactions.ts''\\) -notmatch ''refreshWidget'' | Set-Content ''C:\\\\vizja\\\\dyplom\\\\apka\\\\store\\\\useTransactions.ts''\")",
+      "Bash(ls \"C:/vizja/dyplom/apka/app/\\(tabs\\)/\")",
+      "Bash(npx tsc:*)"
     ]
   }
 }

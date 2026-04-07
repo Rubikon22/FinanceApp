@@ -19,6 +19,7 @@ import { useTheme } from '@/store/useTheme';
 import { useTransactions } from '@/store/useTransactions';
 import { useAccounts } from '@/store/useAccounts';
 import { ChatMessage, processQuery, getQuickReplies } from '@/services/aiChatbot';
+import { isApiKeySet } from '@/services/claudeApi';
 import { format } from 'date-fns';
 
 export default function ChatbotScreen() {
@@ -27,13 +28,20 @@ export default function ChatbotScreen() {
   const colors = getThemeColors(theme);
 
   const transactions = useTransactions(state => state.transactions);
+  const addTransaction = useTransactions(state => state.addTransaction);
+  const loadTransactions = useTransactions(state => state.loadTransactions);
   const accounts = useAccounts(state => state.accounts);
+  const loadAccounts = useAccounts(state => state.loadAccounts);
+
+  const hasApiKey = isApiKeySet();
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Cześć! 👋 Jestem Twoim asystentem finansowym.\n\nMogę pomóc Ci:\n• Dodać nową transakcję\n• Sprawdzić bilans\n• Pokazać wydatki\n• Wygenerować podsumowanie\n\nZadaj mi pytanie!',
+      content: hasApiKey
+        ? 'Cześć! Jestem Twoim asystentem finansowym opartym na AI.\n\nMogę:\n• Dodać transakcję — po prostu napisz np. "Wydałem 35 zł na kawę"\n• Analizować Twoje wydatki\n• Odpowiadać na pytania o finanse\n• Doradzać jak oszczędzać\n\nZapamiętam kontekst rozmowy, więc możesz dopytywać!'
+        : 'Cześć! Jestem Twoim asystentem finansowym.\n\nUwaga: klucz API Claude nie jest ustawiony. Działam w trybie offline z ograniczonymi funkcjami.\n\nUstaw klucz w services/claudeApi.ts aby odblokować pełne AI.',
       timestamp: new Date(),
     },
   ]);
@@ -44,7 +52,6 @@ export default function ChatbotScreen() {
   const quickReplies = getQuickReplies();
 
   useEffect(() => {
-    // Scroll to bottom when new messages arrive
     if (messages.length > 0) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
@@ -62,21 +69,39 @@ export default function ChatbotScreen() {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInputText('');
     setIsProcessing(true);
 
     try {
-      // Simulate thinking delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const response = await processQuery(
+      const result = await processQuery(
         userMessage.content,
         transactions,
-        accounts.map(a => ({ id: a.name, balance: a.balance }))
+        accounts.map(a => ({ name: a.name, balance: a.balance })),
+        updatedMessages, // pass full conversation history
       );
 
-      setMessages(prev => [...prev, response]);
+      // If the AI created a transaction via tool_use, add it to the store
+      if (result.transactionToAdd) {
+        const tx = result.transactionToAdd;
+        const defaultAccountId = accounts.length > 0 ? accounts[0].id : 'cash';
+
+        await addTransaction({
+          type: tx.type,
+          amount: tx.amount,
+          categoryId: tx.categoryId,
+          accountId: defaultAccountId,
+          note: tx.note || '',
+          date: new Date().toISOString().split('T')[0],
+        });
+
+        // Reload data so the next query sees the new transaction
+        await loadTransactions();
+        await loadAccounts();
+      }
+
+      setMessages(prev => [...prev, result.reply]);
     } catch (error) {
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
@@ -98,9 +123,6 @@ export default function ChatbotScreen() {
     if (!action) return;
 
     switch (action.type) {
-      case 'add_transaction':
-        router.push('/add-transaction');
-        break;
       case 'show_balance':
         router.push('/(tabs)/reports');
         break;
@@ -110,6 +132,22 @@ export default function ChatbotScreen() {
       case 'show_category_spending':
         router.push('/(tabs)/charts');
         break;
+      // transaction_added — no navigation needed, already saved
+    }
+  };
+
+  const getActionLabel = (type: string): string | null => {
+    switch (type) {
+      case 'show_balance':
+        return 'Pokaż bilans';
+      case 'show_stats':
+        return 'Zobacz raporty';
+      case 'show_category_spending':
+        return 'Zobacz wykresy';
+      case 'transaction_added':
+        return 'Transakcja dodana';
+      default:
+        return null;
     }
   };
 
@@ -148,17 +186,37 @@ export default function ChatbotScreen() {
             {item.content}
           </Text>
 
-          {item.action && (
+          {item.action && getActionLabel(item.action.type) && (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: `${colors.primary}20` }]}
+              style={[
+                styles.actionButton,
+                {
+                  backgroundColor:
+                    item.action.type === 'transaction_added'
+                      ? `${colors.income}20`
+                      : `${colors.primary}20`,
+                },
+              ]}
               onPress={() => handleAction(item.action)}
+              disabled={item.action.type === 'transaction_added'}
             >
-              <Ionicons name="arrow-forward" size={16} color={colors.primary} />
-              <Text style={[styles.actionButtonText, { color: colors.primary }]}>
-                {item.action.type === 'add_transaction' && 'Dodaj transakcję'}
-                {item.action.type === 'show_balance' && 'Pokaż bilans'}
-                {item.action.type === 'show_stats' && 'Zobacz raporty'}
-                {item.action.type === 'show_category_spending' && 'Zobacz wykresy'}
+              <Ionicons
+                name={item.action.type === 'transaction_added' ? 'checkmark-circle' : 'arrow-forward'}
+                size={16}
+                color={item.action.type === 'transaction_added' ? colors.income : colors.primary}
+              />
+              <Text
+                style={[
+                  styles.actionButtonText,
+                  {
+                    color:
+                      item.action.type === 'transaction_added'
+                        ? colors.income
+                        : colors.primary,
+                  },
+                ]}
+              >
+                {getActionLabel(item.action.type)}
               </Text>
             </TouchableOpacity>
           )}
@@ -192,7 +250,9 @@ export default function ChatbotScreen() {
           </View>
           <View>
             <Text style={styles.headerTitle}>Asystent AI</Text>
-            <Text style={styles.headerSubtitle}>Zawsze online</Text>
+            <Text style={styles.headerSubtitle}>
+              {hasApiKey ? 'Claude AI' : 'Tryb offline'}
+            </Text>
           </View>
         </View>
         <View style={styles.backButton} />

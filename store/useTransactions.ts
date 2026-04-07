@@ -212,7 +212,6 @@ export const useTransactions = create<TransactionsState>((set, get) => ({
         }
         refreshPendingCount();
       }
-      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete transaction';
       set({ error: message, isLoading: false });
