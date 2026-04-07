@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Calendar, DateData } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import { Colors, getThemeColors } from '@/constants/colors';
 import { pl } from '@/i18n/pl';
@@ -9,7 +8,6 @@ import { Transaction } from '@/types';
 import { useTransactions } from '@/store/useTransactions';
 import { useTheme } from '@/store/useTheme';
 import { TransactionList } from '@/components/TransactionList';
-import { SearchFilterModal, SearchFilters } from '@/components/SearchFilter';
 import { SmartInsights } from '@/components/SmartInsights';
 import { generateSmartInsights } from '@/services/aiInsights';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -17,8 +15,7 @@ import { pl as dateFnsPl } from 'date-fns/locale';
 
 export default function RecordsScreen() {
   const router = useRouter();
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [showSearchFilter, setShowSearchFilter] = useState(false);
+  // Calendar & Filters are now separate screens
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [localMinAmount, setLocalMinAmount] = useState('');
@@ -44,25 +41,6 @@ export default function RecordsScreen() {
   const filteredTransactions = hasAdvancedFilters
     ? getAdvancedFilteredTransactions()
     : getFilteredTransactions();
-
-  // Calculate daily stats for calendar
-  const dailyStats = useMemo(() => {
-    const stats: { [key: string]: { income: number; expense: number } } = {};
-
-    transactions.forEach(t => {
-      const dateKey = t.date.split('T')[0];
-      if (!stats[dateKey]) {
-        stats[dateKey] = { income: 0, expense: 0 };
-      }
-      if (t.type === 'income') {
-        stats[dateKey].income += t.amount;
-      } else if (t.type === 'expense') {
-        stats[dateKey].expense += t.amount;
-      }
-    });
-
-    return stats;
-  }, [transactions]);
 
   // Calculate monthly stats
   const monthlyStats = useMemo(() => {
@@ -92,13 +70,6 @@ export default function RecordsScreen() {
   const handleRefresh = useCallback(() => {
     loadTransactions();
   }, [loadTransactions]);
-
-  const handleDateSelect = (day: DateData) => {
-    const date = new Date(day.dateString);
-    setSelectedDate(date);
-    setCurrentMonth(date);
-    setShowCalendar(false);
-  };
 
   const clearDateFilter = () => {
     setSelectedDate(null);
@@ -131,11 +102,6 @@ export default function RecordsScreen() {
     setAdvancedFilters({ ...advancedFilters, maxAmount: isNaN(value) || cleaned === '' ? null : value });
   }, [advancedFilters, setAdvancedFilters]);
 
-  const handleApplyFilters = (filters: SearchFilters) => {
-    setAdvancedFilters(filters);
-    setLocalSearchQuery(filters.query);
-  };
-
   const goToPreviousMonth = () => {
     const newMonth = new Date(currentMonth);
     newMonth.setMonth(newMonth.getMonth() - 1);
@@ -152,52 +118,6 @@ export default function RecordsScreen() {
     router.push(`/edit-transaction?id=${transaction.id}`);
   };
 
-  // Custom day component for calendar
-  const renderDay = (date: DateData, state: string | undefined) => {
-    const dateKey = date.dateString;
-    const stats = dailyStats[dateKey];
-    const isSelected = selectedDate && format(selectedDate, 'yyyy-MM-dd') === dateKey;
-    const isToday = format(new Date(), 'yyyy-MM-dd') === dateKey;
-    const isDisabled = state === 'disabled';
-
-    return (
-      <TouchableOpacity
-        style={[
-          styles.dayContainer,
-          isSelected && styles.daySelected,
-          isToday && !isSelected && styles.dayToday,
-        ]}
-        onPress={() => handleDateSelect(date)}
-        disabled={isDisabled}
-      >
-        <Text
-          style={[
-            styles.dayText,
-            isSelected && styles.dayTextSelected,
-            isToday && !isSelected && styles.dayTextToday,
-            isDisabled && styles.dayTextDisabled,
-          ]}
-        >
-          {date.day}
-        </Text>
-        {stats && (
-          <View style={styles.dayStats}>
-            {stats.income > 0 && (
-              <Text style={styles.dayIncome} numberOfLines={1}>
-                +{stats.income >= 1000 ? Math.floor(stats.income / 1000) + 'k' : stats.income.toFixed(0)}
-              </Text>
-            )}
-            {stats.expense > 0 && (
-              <Text style={styles.dayExpense} numberOfLines={1}>
-                -{stats.expense >= 1000 ? Math.floor(stats.expense / 1000) + 'k' : stats.expense.toFixed(0)}
-              </Text>
-            )}
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
   const styles = createStyles(colors);
 
   return (
@@ -209,7 +129,7 @@ export default function RecordsScreen() {
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => setShowCalendar(true)}
+            onPress={() => router.push('/calendar')}
           >
             <Ionicons name="calendar" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -241,7 +161,7 @@ export default function RecordsScreen() {
         </View>
         <TouchableOpacity
           style={[styles.filterButton, hasAdvancedFilters && styles.filterButtonActive]}
-          onPress={() => setShowSearchFilter(true)}
+          onPress={() => router.push('/filters')}
         >
           <Ionicons
             name="options"
@@ -405,45 +325,6 @@ export default function RecordsScreen() {
         onEditTransaction={handleTransactionPress}
       />
 
-      {/* Calendar Modal */}
-      <Modal
-        visible={showCalendar}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowCalendar(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.calendarContainer}>
-            <View style={styles.calendarHeader}>
-              <Text style={styles.calendarTitle}>Wybierz date</Text>
-              <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-            <Calendar
-              dayComponent={({ date, state }) => renderDay(date as DateData, state)}
-              theme={{
-                backgroundColor: Colors.surface,
-                calendarBackground: Colors.surface,
-                textSectionTitleColor: Colors.textSecondary,
-                arrowColor: Colors.primary,
-                monthTextColor: Colors.text,
-                textMonthFontWeight: '700',
-                textMonthFontSize: 18,
-              }}
-              style={styles.calendar}
-            />
-          </View>
-        </View>
-      </Modal>
-
-      {/* Search Filter Modal */}
-      <SearchFilterModal
-        visible={showSearchFilter}
-        onClose={() => setShowSearchFilter(false)}
-        filters={advancedFilters}
-        onApplyFilters={handleApplyFilters}
-      />
     </SafeAreaView>
   );
 }
@@ -618,76 +499,5 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
   filterBadgeText: {
     color: colors.white,
     fontSize: 13,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  calendarContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    width: '95%',
-    maxWidth: 420,
-  },
-  calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  calendarTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  calendar: {
-    borderRadius: 12,
-  },
-  // Day component styles
-  dayContainer: {
-    width: 44,
-    height: 54,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 4,
-    borderRadius: 8,
-  },
-  daySelected: {
-    backgroundColor: colors.primary,
-  },
-  dayToday: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  dayText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  dayTextSelected: {
-    color: colors.white,
-  },
-  dayTextToday: {
-    color: colors.primary,
-  },
-  dayTextDisabled: {
-    color: colors.border,
-  },
-  dayStats: {
-    marginTop: 2,
-    alignItems: 'center',
-  },
-  dayIncome: {
-    fontSize: 8,
-    fontWeight: '600',
-    color: colors.income,
-  },
-  dayExpense: {
-    fontSize: 8,
-    fontWeight: '600',
-    color: colors.expense,
   },
 });
