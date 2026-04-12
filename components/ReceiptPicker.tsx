@@ -13,7 +13,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
+import { useTheme } from '@/store/useTheme';
 
 interface Props {
   uri: string | null;
@@ -38,6 +39,8 @@ const copyToAppStorage = async (sourceUri: string): Promise<string> => {
 };
 
 export const ReceiptPicker: React.FC<Props> = ({ uri, onChange }) => {
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
   const [isLoading, setIsLoading] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
 
@@ -98,10 +101,12 @@ export const ReceiptPicker: React.FC<Props> = ({ uri, onChange }) => {
     ]);
   };
 
+  const styles = createStyles(colors);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color={Colors.primary} />
+        <ActivityIndicator size="small" color={colors.primary} />
         <Text style={styles.loadingText}>Ładowanie zdjęcia...</Text>
       </View>
     );
@@ -117,7 +122,7 @@ export const ReceiptPicker: React.FC<Props> = ({ uri, onChange }) => {
             <Text style={styles.thumbnailOverlayText}>Powiększ</Text>
           </View>
           <TouchableOpacity style={styles.removeButton} onPress={handleRemove}>
-            <Ionicons name="close-circle" size={22} color={Colors.expense} />
+            <Ionicons name="close-circle" size={22} color={colors.expense} />
           </TouchableOpacity>
         </TouchableOpacity>
 
@@ -145,7 +150,7 @@ export const ReceiptPicker: React.FC<Props> = ({ uri, onChange }) => {
 
   return (
     <TouchableOpacity style={styles.addButton} onPress={handleAdd} activeOpacity={0.7}>
-      <Ionicons name="camera-outline" size={22} color={Colors.primary} />
+      <Ionicons name="camera-outline" size={22} color={colors.primary} />
       <Text style={styles.addButtonText}>Dodaj zdjęcie paragonu</Text>
     </TouchableOpacity>
   );
@@ -153,40 +158,40 @@ export const ReceiptPicker: React.FC<Props> = ({ uri, onChange }) => {
 
 const { width, height } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderStyle: 'dashed',
   },
   addButtonText: {
     fontSize: 15,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: '500',
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 14,
   },
   loadingText: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   thumbnailContainer: {
     borderRadius: 12,
     overflow: 'hidden',
     height: 140,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
   },
   thumbnail: {
     width: '100%',

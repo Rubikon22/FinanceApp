@@ -568,6 +568,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   monthLabel: {
     fontSize: 16,
@@ -636,6 +638,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     padding: 24,
     alignItems: 'center',
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   totalLabel: {
     fontSize: 14,
@@ -656,6 +660,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   accountIcon: {
     width: 52,
@@ -711,6 +717,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
     marginTop: 8,
     marginBottom: 24,
     gap: 10,

@@ -4,6 +4,7 @@ import * as db from '@/services/database';
 import { Colors } from '@/constants/colors';
 import { supabase, syncAccounts, deleteAccountFromCloud } from '@/services/supabase';
 import { useSyncStatus } from '@/store/useSyncStatus';
+import { getSupabaseUser } from '@/services/supabase';
 
 const onSyncError = (error: unknown) => {
   const msg = (error as any)?.message ?? String(error);
@@ -46,8 +47,10 @@ export const useAccounts = create<AccountsState>((set, get) => ({
     try {
       let accounts = await db.getAllAccounts();
 
-      // Jeśli nie ma żadnych kont, utwórz domyślne
-      if (accounts.length === 0) {
+      // Utwórz domyślne konta TYLKO gdy brak kont i użytkownik niezalogowany
+      // (zalogowany użytkownik dostanie konta z chmury przez sync)
+      const loggedInUser = await getSupabaseUser();
+      if (accounts.length === 0 && !loggedInUser) {
         const defaultAccounts: Account[] = [
           {
             id: generateId(),

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Transaction } from '@/types';
-import { Colors, getThemeColors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
 import { getCategoryById } from '@/constants/categories';
 import { useAccounts } from '@/store/useAccounts';
 import { useTransactions } from '@/store/useTransactions';
@@ -50,11 +50,11 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
   const getTypeColor = () => {
     switch (transaction.type) {
       case 'income':
-        return Colors.income;
+        return colors.income;
       case 'expense':
-        return Colors.expense;
+        return colors.expense;
       case 'transfer':
-        return Colors.transfer;
+        return colors.transfer;
     }
   };
 

@@ -2,9 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Transaction } from '@/types';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
 import { getCategoryById } from '@/constants/categories';
 import { useAccounts } from '@/store/useAccounts';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 
 interface TransactionItemProps {
@@ -13,6 +14,8 @@ interface TransactionItemProps {
 }
 
 export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onPress }) => {
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
   const getAccountById = useAccounts(state => state.getAccountById);
   const category = getCategoryById(transaction.categoryId);
   const account = getAccountById(transaction.accountId);
@@ -21,11 +24,11 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
   const getAmountColor = () => {
     switch (transaction.type) {
       case 'income':
-        return Colors.income;
+        return colors.income;
       case 'expense':
-        return Colors.expense;
+        return colors.expense;
       case 'transfer':
-        return Colors.transfer;
+        return colors.transfer;
     }
   };
 
@@ -54,17 +57,19 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
     return account?.name || '';
   };
 
+  const styles = createStyles(colors);
+
   return (
     <TouchableOpacity
       style={styles.container}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconContainer, { backgroundColor: category?.color || Colors.transfer }]}>
+      <View style={[styles.iconContainer, { backgroundColor: category?.color || colors.transfer }]}>
         <Ionicons
           name={getIcon() as any}
           size={22}
-          color={Colors.white}
+          color={colors.white}
         />
       </View>
 
@@ -89,47 +94,50 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  content: {
-    flex: 1,
-  },
-  category: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  account: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  note: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  amountContainer: {
-    alignItems: 'flex-end',
-  },
-  amount: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+const createStyles = (colors: ReturnType<typeof getThemeColors>) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      padding: 16,
+      borderRadius: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    iconContainer: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    content: {
+      flex: 1,
+    },
+    category: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    account: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    note: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 4,
+      fontStyle: 'italic',
+    },
+    amountContainer: {
+      alignItems: 'flex-end',
+    },
+    amount: {
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  });

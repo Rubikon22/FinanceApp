@@ -73,5 +73,5 @@ export function getApiKey(): string {
 }
 
 export function isApiKeySet(): boolean {
-  return CLAUDE_API_KEY !== 'YOUR_CLAUDE_API_KEY' && CLAUDE_API_KEY.length > 0;
+  return CLAUDE_API_KEY.length > 0 && !CLAUDE_API_KEY.includes('YOUR_CLAUDE');
 }

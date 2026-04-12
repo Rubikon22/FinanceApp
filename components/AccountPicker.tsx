@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Account } from '@/types';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 
 interface AccountPickerProps {
@@ -18,6 +19,10 @@ export const AccountPicker: React.FC<AccountPickerProps> = ({
   onSelect,
   label,
 }) => {
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.wrapper}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -42,18 +47,18 @@ export const AccountPicker: React.FC<AccountPickerProps> = ({
               <View
                 style={[
                   styles.iconContainer,
-                  { backgroundColor: isSelected ? account.color : Colors.card },
+                  { backgroundColor: isSelected ? account.color : colors.card },
                 ]}
               >
                 <Ionicons
                   name={account.icon as any}
                   size={20}
-                  color={isSelected ? Colors.white : account.color}
+                  color={isSelected ? colors.white : account.color}
                 />
               </View>
               <View style={styles.accountInfo}>
                 <Text style={styles.accountName}>{account.name}</Text>
-                <Text style={[styles.accountBalance, { color: account.balance >= 0 ? Colors.income : Colors.expense }]}>
+                <Text style={[styles.accountBalance, { color: account.balance >= 0 ? colors.income : colors.expense }]}>
                   {account.balance.toFixed(2)} {pl.common.currency}
                 </Text>
               </View>
@@ -65,14 +70,14 @@ export const AccountPicker: React.FC<AccountPickerProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   wrapper: {
     marginBottom: 16,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 8,
     paddingHorizontal: 4,
   },
@@ -85,13 +90,13 @@ const styles = StyleSheet.create({
     padding: 12,
     marginRight: 8,
     borderRadius: 12,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 2,
     borderColor: 'transparent',
     minWidth: 140,
   },
   accountItemSelected: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
   },
   iconContainer: {
     width: 40,
@@ -107,7 +112,7 @@ const styles = StyleSheet.create({
   accountName: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
   },
   accountBalance: {
     fontSize: 12,

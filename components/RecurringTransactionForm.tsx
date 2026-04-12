@@ -9,7 +9,8 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { RecurringTransaction, RecurringFrequency, TransactionType } from '@/types';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants/categories';
@@ -36,6 +37,8 @@ export const RecurringTransactionForm: React.FC<Props> = ({
   onSave,
   editingRecurring,
 }) => {
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -131,6 +134,8 @@ export const RecurringTransactionForm: React.FC<Props> = ({
     }
   };
 
+  const styles = createStyles(colors);
+
   return (
     <Modal
       visible={visible}
@@ -145,7 +150,7 @@ export const RecurringTransactionForm: React.FC<Props> = ({
               {editingRecurring ? pl.recurring.edit : pl.recurring.add}
             </Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={Colors.text} />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -179,7 +184,7 @@ export const RecurringTransactionForm: React.FC<Props> = ({
                 onChangeText={setAmount}
                 keyboardType="decimal-pad"
                 placeholder="0.00"
-                placeholderTextColor={Colors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
               />
             </View>
 
@@ -199,12 +204,12 @@ export const RecurringTransactionForm: React.FC<Props> = ({
                     <Ionicons
                       name={cat.icon as any}
                       size={24}
-                      color={categoryId === cat.id ? Colors.white : cat.color}
+                      color={categoryId === cat.id ? colors.white : cat.color}
                     />
                     <Text
                       style={[
                         styles.categoryText,
-                        categoryId === cat.id && { color: Colors.white },
+                        categoryId === cat.id && { color: colors.white },
                       ]}
                       numberOfLines={1}
                     >
@@ -224,12 +229,12 @@ export const RecurringTransactionForm: React.FC<Props> = ({
                     key={acc.id}
                     style={[
                       styles.accountItem,
-                      accountId === acc.id && { borderColor: Colors.primary, borderWidth: 2 },
+                      accountId === acc.id && { borderColor: colors.primary, borderWidth: 2 },
                     ]}
                     onPress={() => setAccountId(acc.id)}
                   >
                     <View style={[styles.accountIcon, { backgroundColor: acc.color }]}>
-                      <Ionicons name={acc.icon as any} size={20} color={Colors.white} />
+                      <Ionicons name={acc.icon as any} size={20} color={colors.white} />
                     </View>
                     <Text style={styles.accountName}>{acc.name}</Text>
                   </TouchableOpacity>
@@ -271,7 +276,7 @@ export const RecurringTransactionForm: React.FC<Props> = ({
                 value={note}
                 onChangeText={setNote}
                 placeholder={pl.add.notePlaceholder}
-                placeholderTextColor={Colors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 multiline
               />
             </View>
@@ -287,7 +292,7 @@ export const RecurringTransactionForm: React.FC<Props> = ({
               <Ionicons
                 name={isActive ? 'checkmark-circle' : 'ellipse-outline'}
                 size={28}
-                color={isActive ? Colors.income : Colors.textSecondary}
+                color={isActive ? colors.income : colors.textSecondary}
               />
             </TouchableOpacity>
 
@@ -308,14 +313,14 @@ export const RecurringTransactionForm: React.FC<Props> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -331,11 +336,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
   },
   typeSelector: {
     flexDirection: 'row',
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
@@ -347,32 +352,32 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   typeButtonActive: {
-    backgroundColor: Colors.expense,
+    backgroundColor: colors.expense,
   },
   typeButtonActiveIncome: {
-    backgroundColor: Colors.income,
+    backgroundColor: colors.income,
   },
   typeButtonText: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   typeButtonTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   inputGroup: {
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
   },
   noteInput: {
     minHeight: 80,
@@ -386,7 +391,7 @@ const styles = StyleSheet.create({
   categoryItem: {
     width: '23%',
     aspectRatio: 1,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -394,12 +399,12 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 10,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 4,
     textAlign: 'center',
   },
   accountItem: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 12,
     marginRight: 12,
@@ -416,7 +421,7 @@ const styles = StyleSheet.create({
   },
   accountName: {
     fontSize: 12,
-    color: Colors.text,
+    color: colors.text,
   },
   frequencyContainer: {
     flexDirection: 'row',
@@ -426,30 +431,30 @@ const styles = StyleSheet.create({
   frequencyItem: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
   },
   frequencyItemActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   frequencyText: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   frequencyTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   activeToggle: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
   },
   saveButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -460,6 +465,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.white,
+    color: colors.white,
   },
 });

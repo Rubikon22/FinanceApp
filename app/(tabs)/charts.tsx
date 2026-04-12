@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Dimensions, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Dimensions } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
-import { Calendar } from 'react-native-calendars';
-import { Colors } from '@/constants/colors';
+import { useRouter } from 'expo-router';
+import { getThemeColors } from '@/constants/colors';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { ChartData } from '@/types';
 import { useTransactions } from '@/store/useTransactions';
@@ -13,8 +14,10 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 const screenWidth = Dimensions.get('window').width;
 
 export default function ChartsScreen() {
-  const [showDateModal, setShowDateModal] = useState(false);
-  const [selectingStart, setSelectingStart] = useState(true);
+  const router = useRouter();
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
+
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
 
@@ -57,64 +60,18 @@ export default function ChartsScreen() {
       return {
         name: category?.name || categoryId,
         amount,
-        color: category?.color || Colors.gray,
-        legendFontColor: Colors.text,
+        color: category?.color || colors.gray,
+        legendFontColor: colors.text,
         legendFontSize: 12,
       };
     })
     .sort((a, b) => b.amount - a.amount);
 
-  const handleDayPress = (day: { dateString: string }) => {
-    const selectedDate = new Date(day.dateString);
-    if (selectingStart) {
-      setStartDate(selectedDate);
-      setSelectingStart(false);
-    } else {
-      if (selectedDate < startDate) {
-        setEndDate(startDate);
-        setStartDate(selectedDate);
-      } else {
-        setEndDate(selectedDate);
-      }
-      setShowDateModal(false);
-      setSelectingStart(true);
-    }
-  };
-
-  const getMarkedDates = () => {
-    const marked: any = {};
-    const start = format(startDate, 'yyyy-MM-dd');
-    const end = format(endDate, 'yyyy-MM-dd');
-
-    marked[start] = {
-      startingDay: true,
-      color: Colors.primary,
-      textColor: Colors.white,
-    };
-    marked[end] = {
-      endingDay: true,
-      color: Colors.primary,
-      textColor: Colors.white,
-    };
-
-    // Mark days in between
-    const current = new Date(startDate);
-    current.setDate(current.getDate() + 1);
-    while (current < endDate) {
-      const dateStr = format(current, 'yyyy-MM-dd');
-      marked[dateStr] = {
-        color: Colors.secondary,
-        textColor: Colors.white,
-      };
-      current.setDate(current.getDate() + 1);
-    }
-
-    return marked;
-  };
-
   const getDateRangeText = () => {
     return `${format(startDate, 'dd.MM.yyyy')} - ${format(endDate, 'dd.MM.yyyy')}`;
   };
+
+  const styles = createStyles(colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -122,85 +79,28 @@ export default function ChartsScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.dateSelector}
-          onPress={() => {
-            setSelectingStart(true);
-            setShowDateModal(true);
-          }}
+          onPress={() => router.push('/calendar' as any)}
         >
-          <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
+          <Ionicons name="calendar-outline" size={18} color={colors.primary} />
           <Text style={styles.dateSelectorText}>{getDateRangeText()}</Text>
-          <Ionicons name="chevron-down" size={16} color={Colors.primary} />
+          <Ionicons name="chevron-down" size={16} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{pl.charts.title}</Text>
         <View style={styles.headerRight} />
       </View>
 
-      {/* Date Range Modal */}
-      <Modal
-        visible={showDateModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowDateModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.dateModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectingStart ? 'Wybierz date poczatkowa' : 'Wybierz date koncowa'}
-              </Text>
-              <TouchableOpacity onPress={() => {
-                setShowDateModal(false);
-                setSelectingStart(true);
-              }}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.selectedDates}>
-              <View style={[styles.dateBox, selectingStart && styles.dateBoxActive]}>
-                <Text style={styles.dateBoxLabel}>Od</Text>
-                <Text style={styles.dateBoxValue}>{format(startDate, 'dd.MM.yyyy')}</Text>
-              </View>
-              <Ionicons name="arrow-forward" size={20} color={Colors.textSecondary} />
-              <View style={[styles.dateBox, !selectingStart && styles.dateBoxActive]}>
-                <Text style={styles.dateBoxLabel}>Do</Text>
-                <Text style={styles.dateBoxValue}>{format(endDate, 'dd.MM.yyyy')}</Text>
-              </View>
-            </View>
-
-            <Calendar
-              onDayPress={handleDayPress}
-              markedDates={getMarkedDates()}
-              markingType="period"
-              theme={{
-                backgroundColor: Colors.surface,
-                calendarBackground: Colors.surface,
-                textSectionTitleColor: Colors.textSecondary,
-                selectedDayBackgroundColor: Colors.primary,
-                selectedDayTextColor: Colors.white,
-                todayTextColor: Colors.primary,
-                dayTextColor: Colors.text,
-                textDisabledColor: Colors.border,
-                arrowColor: Colors.primary,
-                monthTextColor: Colors.text,
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
-          <View style={[styles.summaryCard, { borderLeftColor: Colors.income }]}>
+          <View style={[styles.summaryCard, { borderLeftColor: colors.income }]}>
             <Text style={styles.summaryLabel}>{pl.charts.income}</Text>
-            <Text style={[styles.summaryAmount, { color: Colors.income }]}>
+            <Text style={[styles.summaryAmount, { color: colors.income }]}>
               +{totalIncome.toFixed(2)} {pl.common.currency}
             </Text>
           </View>
-          <View style={[styles.summaryCard, { borderLeftColor: Colors.expense }]}>
+          <View style={[styles.summaryCard, { borderLeftColor: colors.expense }]}>
             <Text style={styles.summaryLabel}>{pl.charts.expenses}</Text>
-            <Text style={[styles.summaryAmount, { color: Colors.expense }]}>
+            <Text style={[styles.summaryAmount, { color: colors.expense }]}>
               -{totalExpenses.toFixed(2)} {pl.common.currency}
             </Text>
           </View>
@@ -258,10 +158,10 @@ export default function ChartsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -270,12 +170,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
   },
   headerRight: {
     width: 60,
@@ -283,7 +183,7 @@ const styles = StyleSheet.create({
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 8,
@@ -292,61 +192,7 @@ const styles = StyleSheet.create({
   dateSelectorText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.primary,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  dateModal: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  selectedDates: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  dateBox: {
-    backgroundColor: Colors.card,
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    minWidth: 100,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  dateBoxActive: {
-    borderColor: Colors.primary,
-  },
-  dateBoxLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginBottom: 4,
-  },
-  dateBoxValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
+    color: colors.primary,
   },
   content: {
     flex: 1,
@@ -360,14 +206,16 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   summaryLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   summaryAmount: {
@@ -375,19 +223,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   chartContainer: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   chartTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 16,
   },
   noDataContainer: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 48,
     alignItems: 'center',
@@ -395,13 +245,15 @@ const styles = StyleSheet.create({
   },
   noDataText: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   legendContainer: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 100,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   legendItem: {
     flexDirection: 'row',
@@ -409,7 +261,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   legendLeft: {
     flexDirection: 'row',
@@ -424,7 +276,7 @@ const styles = StyleSheet.create({
   },
   legendName: {
     fontSize: 14,
-    color: Colors.text,
+    color: colors.text,
   },
   legendRight: {
     alignItems: 'flex-end',
@@ -432,11 +284,11 @@ const styles = StyleSheet.create({
   legendAmount: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
   },
   legendPercent: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
 });

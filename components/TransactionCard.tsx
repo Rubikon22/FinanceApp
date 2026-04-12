@@ -9,10 +9,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Transaction } from '@/types';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
 import { getCategoryById } from '@/constants/categories';
 import { useAccounts } from '@/store/useAccounts';
 import { useTransactions } from '@/store/useTransactions';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { format } from 'date-fns';
 
@@ -27,6 +28,8 @@ export const TransactionCard: React.FC<Props> = ({ transaction, visible, onClose
   const getAccountById = useAccounts(s => s.getAccountById);
   const deleteTransaction = useTransactions(s => s.deleteTransaction);
   const loadAccounts = useAccounts(s => s.loadAccounts);
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
 
   if (!transaction) return null;
 
@@ -35,9 +38,9 @@ export const TransactionCard: React.FC<Props> = ({ transaction, visible, onClose
   const toAccount = transaction.toAccountId ? getAccountById(transaction.toAccountId) : null;
 
   const typeColor =
-    transaction.type === 'income' ? Colors.income :
-    transaction.type === 'expense' ? Colors.expense :
-    Colors.transfer;
+    transaction.type === 'income' ? colors.income :
+    transaction.type === 'expense' ? colors.expense :
+    colors.transfer;
 
   const amountPrefix =
     transaction.type === 'income' ? '+' :
@@ -72,13 +75,15 @@ export const TransactionCard: React.FC<Props> = ({ transaction, visible, onClose
     onClose();
   };
 
+  const styles = createStyles(colors);
+
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} onPress={() => {}} style={styles.card}>
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Ionicons name="close" size={20} color={Colors.textSecondary} />
+            <Ionicons name="close" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <Text style={[styles.amount, { color: typeColor }]}>
@@ -121,11 +126,11 @@ export const TransactionCard: React.FC<Props> = ({ transaction, visible, onClose
           </View>
 
           <View style={styles.buttons}>
-            <TouchableOpacity style={[styles.btn, { backgroundColor: Colors.primary }]} onPress={handleEdit}>
+            <TouchableOpacity style={[styles.btn, { backgroundColor: colors.primary }]} onPress={handleEdit}>
               <Ionicons name="pencil-outline" size={16} color="#fff" />
               <Text style={styles.btnText}>Edytuj</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.btn, { backgroundColor: Colors.expense }]} onPress={handleDelete}>
+            <TouchableOpacity style={[styles.btn, { backgroundColor: colors.expense }]} onPress={handleDelete}>
               <Ionicons name="trash-outline" size={16} color="#fff" />
               <Text style={styles.btnText}>Usun</Text>
             </TouchableOpacity>
@@ -137,7 +142,7 @@ export const TransactionCard: React.FC<Props> = ({ transaction, visible, onClose
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -147,7 +152,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
   },
@@ -177,7 +182,7 @@ const styles = StyleSheet.create({
   },
   infoBlock: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
     marginBottom: 20,
   },
   row: {
@@ -186,16 +191,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 11,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   label: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   value: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
     maxWidth: '60%',
     textAlign: 'right',
   },

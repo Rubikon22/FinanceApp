@@ -43,12 +43,12 @@ const DarkTheme = {
 const LightTheme = {
   primary: '#6C5CE7',
   secondary: '#A29BFE',
-  background: '#F5F6FA',
+  background: '#F2F3F8',
   surface: '#FFFFFF',
   card: '#F0F0F5',
   text: '#1A1A2E',
   textSecondary: '#6C757D',
-  border: '#E0E0E5',
+  border: '#D0D1D9',
 
   income: '#00B894',
   expense: '#E74C3C',

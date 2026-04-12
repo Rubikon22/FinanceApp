@@ -403,6 +403,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) =>
       borderRadius: 16,
       padding: 12,
       gap: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     messageText: {
       fontSize: 15,

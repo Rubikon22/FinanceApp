@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Category } from '@/types';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
+import { useTheme } from '@/store/useTheme';
 
 interface CategoryPickerProps {
   categories: Category[];
@@ -15,6 +16,10 @@ export const CategoryPicker: React.FC<CategoryPickerProps> = ({
   selectedId,
   onSelect,
 }) => {
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
+  const styles = createStyles(colors);
+
   return (
     <ScrollView
       horizontal
@@ -37,13 +42,13 @@ export const CategoryPicker: React.FC<CategoryPickerProps> = ({
             <View
               style={[
                 styles.iconContainer,
-                { backgroundColor: isSelected ? category.color : Colors.card },
+                { backgroundColor: isSelected ? category.color : colors.card },
               ]}
             >
               <Ionicons
                 name={category.icon as any}
                 size={24}
-                color={isSelected ? Colors.white : category.color}
+                color={isSelected ? colors.white : category.color}
               />
             </View>
             <Text
@@ -73,6 +78,10 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   selectedId,
   onSelect,
 }) => {
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
+  const stylesGrid = createGridStyles(colors);
+
   return (
     <View style={stylesGrid.container}>
       {categories.map((category) => {
@@ -96,7 +105,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
               <Ionicons
                 name={category.icon as any}
                 size={24}
-                color={Colors.white}
+                color={colors.white}
               />
             </View>
             <Text style={stylesGrid.categoryName} numberOfLines={1}>
@@ -109,7 +118,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   container: {
     paddingHorizontal: 4,
     paddingVertical: 8,
@@ -119,13 +128,13 @@ const styles = StyleSheet.create({
     padding: 12,
     marginHorizontal: 4,
     borderRadius: 12,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 2,
     borderColor: 'transparent',
     minWidth: 80,
   },
   categoryItemSelected: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
   },
   iconContainer: {
     width: 48,
@@ -137,12 +146,12 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 12,
-    color: Colors.text,
+    color: colors.text,
     textAlign: 'center',
   },
 });
 
-const stylesGrid = StyleSheet.create({
+const createGridStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -154,7 +163,7 @@ const stylesGrid = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     borderRadius: 12,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     width: '23%',
     borderWidth: 2,
     borderColor: 'transparent',
@@ -169,7 +178,7 @@ const stylesGrid = StyleSheet.create({
   },
   categoryName: {
     fontSize: 11,
-    color: Colors.text,
+    color: colors.text,
     textAlign: 'center',
   },
 });

@@ -9,7 +9,8 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { TransactionType } from '@/types';
 import { ALL_CATEGORIES } from '@/constants/categories';
@@ -35,6 +36,8 @@ export const SearchFilterModal: React.FC<Props> = ({
   filters,
   onApplyFilters,
 }) => {
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
   const [localFilters, setLocalFilters] = useState<SearchFilters>(filters);
 
   useEffect(() => {
@@ -66,6 +69,8 @@ export const SearchFilterModal: React.FC<Props> = ({
     { value: 'transfer', label: pl.transaction.transfer },
   ];
 
+  const styles = createStyles(colors);
+
   return (
     <Modal
       visible={visible}
@@ -78,7 +83,7 @@ export const SearchFilterModal: React.FC<Props> = ({
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{pl.search.filters}</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={Colors.text} />
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -87,19 +92,19 @@ export const SearchFilterModal: React.FC<Props> = ({
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{pl.common.search}</Text>
               <View style={styles.searchInputContainer}>
-                <Ionicons name="search" size={20} color={Colors.textSecondary} />
+                <Ionicons name="search" size={20} color={colors.textSecondary} />
                 <TextInput
                   style={styles.searchInput}
                   value={localFilters.query}
                   onChangeText={(query) => setLocalFilters({ ...localFilters, query })}
                   placeholder={pl.search.placeholder}
-                  placeholderTextColor={Colors.textSecondary}
+                  placeholderTextColor={colors.textSecondary}
                 />
                 {localFilters.query.length > 0 && (
                   <TouchableOpacity
                     onPress={() => setLocalFilters({ ...localFilters, query: '' })}
                   >
-                    <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
+                    <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -163,7 +168,7 @@ export const SearchFilterModal: React.FC<Props> = ({
                     <Ionicons
                       name={cat.icon as any}
                       size={16}
-                      color={localFilters.categoryId === cat.id ? Colors.white : cat.color}
+                      color={localFilters.categoryId === cat.id ? colors.white : cat.color}
                     />
                     <Text
                       style={[
@@ -195,7 +200,7 @@ export const SearchFilterModal: React.FC<Props> = ({
                     }
                     keyboardType="decimal-pad"
                     placeholder="0"
-                    placeholderTextColor={Colors.textSecondary}
+                    placeholderTextColor={colors.textSecondary}
                   />
                 </View>
                 <Text style={styles.amountDivider}>-</Text>
@@ -212,7 +217,7 @@ export const SearchFilterModal: React.FC<Props> = ({
                     }
                     keyboardType="decimal-pad"
                     placeholder="9999"
-                    placeholderTextColor={Colors.textSecondary}
+                    placeholderTextColor={colors.textSecondary}
                   />
                 </View>
               </View>
@@ -234,14 +239,14 @@ export const SearchFilterModal: React.FC<Props> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -257,20 +262,20 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
   },
   inputGroup: {
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     paddingHorizontal: 16,
     gap: 12,
@@ -278,7 +283,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     paddingVertical: 14,
   },
   typeContainer: {
@@ -288,39 +293,39 @@ const styles = StyleSheet.create({
   typeButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
   },
   typeButtonActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   typeButtonText: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   typeButtonTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     marginRight: 8,
     gap: 6,
   },
   categoryChipActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   categoryChipText: {
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '500',
   },
   categoryChipTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   amountRow: {
     flexDirection: 'row',
@@ -332,19 +337,19 @@ const styles = StyleSheet.create({
   },
   amountLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   amountInput: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
   },
   amountDivider: {
     fontSize: 20,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 14,
   },
   buttonRow: {
@@ -354,7 +359,7 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     flex: 1,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -362,11 +367,11 @@ const styles = StyleSheet.create({
   clearButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
   },
   applyButton: {
     flex: 1,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -374,6 +379,6 @@ const styles = StyleSheet.create({
   applyButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.white,
+    color: colors.white,
   },
 });

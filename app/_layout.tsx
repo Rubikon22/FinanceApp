@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { useTransactions } from '@/store/useTransactions';
 import { useAccounts } from '@/store/useAccounts';
@@ -15,14 +16,17 @@ export default function RootLayout() {
   const loadTransactions = useTransactions(state => state.loadTransactions);
   const loadAccounts = useAccounts(state => state.loadAccounts);
   const checkAuth = useAuth(state => state.checkAuth);
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
 
   useEffect(() => {
     const initApp = async () => {
       try {
+        // checkAuth first so loadAccounts knows if user is logged in
+        await checkAuth();
         await Promise.all([
           loadTransactions(),
           loadAccounts(),
-          checkAuth(),
         ]);
       } catch (error) {
         Alert.alert(pl.errors.errorTitle, pl.errors.generic);
@@ -41,13 +45,13 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <StatusBar style="light" />
+    <GestureHandlerRootView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <SyncStatusBanner />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
+          contentStyle: { backgroundColor: colors.background },
           animation: 'slide_from_bottom',
         }}
       >
@@ -88,6 +92,5 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
 });

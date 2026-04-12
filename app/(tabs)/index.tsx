@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Colors, getThemeColors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
 import { pl } from '@/i18n/pl';
 import { Transaction } from '@/types';
 import { useTransactions } from '@/store/useTransactions';
@@ -223,13 +223,13 @@ export default function RecordsScreen() {
         {/* Month Selector */}
         <View style={styles.monthSelector}>
           <TouchableOpacity onPress={goToPreviousMonth} style={styles.monthArrow}>
-            <Ionicons name="chevron-back" size={24} color={Colors.primary} />
+            <Ionicons name="chevron-back" size={24} color={colors.primary} />
           </TouchableOpacity>
           <Text style={styles.monthText}>
             {format(currentMonth, 'LLLL yyyy', { locale: dateFnsPl })}
           </Text>
           <TouchableOpacity onPress={goToNextMonth} style={styles.monthArrow}>
-            <Ionicons name="chevron-forward" size={24} color={Colors.primary} />
+            <Ionicons name="chevron-forward" size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -237,14 +237,14 @@ export default function RecordsScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Przychody</Text>
-            <Text style={[styles.statValue, { color: Colors.income }]}>
+            <Text style={[styles.statValue, { color: colors.income }]}>
               +{monthlyStats.income.toFixed(2)}
             </Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Wydatki</Text>
-            <Text style={[styles.statValue, { color: Colors.expense }]}>
+            <Text style={[styles.statValue, { color: colors.expense }]}>
               -{monthlyStats.expenses.toFixed(2)}
             </Text>
           </View>
@@ -253,7 +253,7 @@ export default function RecordsScreen() {
             <Text style={styles.statLabel}>Bilans</Text>
             <Text style={[
               styles.statValue,
-              { color: monthlyStats.balance >= 0 ? Colors.income : Colors.expense }
+              { color: monthlyStats.balance >= 0 ? colors.income : colors.expense }
             ]}>
               {monthlyStats.balance >= 0 ? '+' : ''}{monthlyStats.balance.toFixed(2)}
             </Text>
@@ -374,6 +374,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     borderRadius: 12,
     paddingHorizontal: 12,
     gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   searchInput: {
     flex: 1,
@@ -388,6 +390,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   amountFilterRow: {
     flexDirection: 'row',
@@ -437,6 +441,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
   },
   summaryCard: {
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 16,

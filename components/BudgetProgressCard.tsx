@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { Budget } from '@/types';
 import { getCategoryById } from '@/constants/categories';
@@ -22,16 +23,20 @@ interface Props {
 }
 
 export const BudgetProgressCard: React.FC<Props> = ({ progress, onPress, onDelete }) => {
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
   const { budget, spent, remaining, percentage, isOverBudget, isNearLimit } = progress;
   const category = getCategoryById(budget.categoryId);
 
   if (!category) return null;
 
   const progressColor = isOverBudget
-    ? Colors.expense
+    ? colors.expense
     : isNearLimit
-    ? Colors.warning
-    : Colors.income;
+    ? colors.warning
+    : colors.income;
+
+  const styles = createStyles(colors);
 
   return (
     <TouchableOpacity
@@ -42,7 +47,7 @@ export const BudgetProgressCard: React.FC<Props> = ({ progress, onPress, onDelet
       <View style={styles.header}>
         <View style={styles.categoryInfo}>
           <View style={[styles.iconContainer, { backgroundColor: category.color }]}>
-            <Ionicons name={category.icon as any} size={20} color={Colors.white} />
+            <Ionicons name={category.icon as any} size={20} color={colors.white} />
           </View>
           <View>
             <Text style={styles.categoryName}>{category.name}</Text>
@@ -53,7 +58,7 @@ export const BudgetProgressCard: React.FC<Props> = ({ progress, onPress, onDelet
         </View>
         {onDelete && (
           <TouchableOpacity onPress={onDelete} style={styles.deleteButton}>
-            <Ionicons name="trash-outline" size={20} color={Colors.expense} />
+            <Ionicons name="trash-outline" size={20} color={colors.expense} />
           </TouchableOpacity>
         )}
       </View>
@@ -78,7 +83,7 @@ export const BudgetProgressCard: React.FC<Props> = ({ progress, onPress, onDelet
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>{pl.budgets.spent}</Text>
-          <Text style={[styles.statValue, { color: Colors.expense }]}>
+          <Text style={[styles.statValue, { color: colors.expense }]}>
             {spent.toFixed(2)} {pl.common.currency}
           </Text>
         </View>
@@ -92,7 +97,7 @@ export const BudgetProgressCard: React.FC<Props> = ({ progress, onPress, onDelet
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>{pl.budgets.remaining}</Text>
-          <Text style={[styles.statValue, { color: remaining >= 0 ? Colors.income : Colors.expense }]}>
+          <Text style={[styles.statValue, { color: remaining >= 0 ? colors.income : colors.expense }]}>
             {remaining.toFixed(2)} {pl.common.currency}
           </Text>
         </View>
@@ -100,24 +105,24 @@ export const BudgetProgressCard: React.FC<Props> = ({ progress, onPress, onDelet
 
       {isOverBudget && (
         <View style={styles.warningBanner}>
-          <Ionicons name="warning" size={16} color={Colors.expense} />
+          <Ionicons name="warning" size={16} color={colors.expense} />
           <Text style={styles.warningText}>{pl.budgets.overBudget}</Text>
         </View>
       )}
 
       {isNearLimit && !isOverBudget && (
-        <View style={[styles.warningBanner, { backgroundColor: `${Colors.warning}20` }]}>
-          <Ionicons name="alert-circle" size={16} color={Colors.warning} />
-          <Text style={[styles.warningText, { color: Colors.warning }]}>{pl.budgets.nearLimit}</Text>
+        <View style={[styles.warningBanner, { backgroundColor: `${colors.warning}20` }]}>
+          <Ionicons name="alert-circle" size={16} color={colors.warning} />
+          <Text style={[styles.warningText, { color: colors.warning }]}>{pl.budgets.nearLimit}</Text>
         </View>
       )}
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   container: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -143,11 +148,11 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
   },
   periodText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   deleteButton: {
@@ -161,7 +166,7 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 8,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 4,
     overflow: 'hidden',
     marginRight: 12,
@@ -187,22 +192,22 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 30,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
   },
   statLabel: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   statValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
   },
   warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${Colors.expense}20`,
+    backgroundColor: `${colors.expense}20`,
     borderRadius: 8,
     padding: 10,
     marginTop: 12,
@@ -211,6 +216,6 @@ const styles = StyleSheet.create({
   warningText: {
     fontSize: 13,
     fontWeight: '500',
-    color: Colors.expense,
+    color: colors.expense,
   },
 });

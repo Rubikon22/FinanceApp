@@ -15,7 +15,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
-import { Colors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
+import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { TransactionType, Category, Account } from '@/types';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants/categories';
@@ -71,12 +72,6 @@ const DEFAULT_INITIAL_VALUES: TransactionFormInitialValues = {
   receiptUri: undefined,
 };
 
-const TABS: { key: TabType; label: string; color: string }[] = [
-  { key: 'expense', label: pl.transaction.expense, color: Colors.expense },
-  { key: 'income', label: pl.transaction.income, color: Colors.income },
-  { key: 'transfer', label: pl.transaction.transfer, color: Colors.transfer },
-];
-
 export const TransactionForm: React.FC<TransactionFormProps> = ({
   title,
   saveButtonText,
@@ -86,6 +81,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSave,
 }) => {
   const router = useRouter();
+
+  const theme = useTheme(state => state.theme);
+  const colors = getThemeColors(theme);
+
+  const TABS: { key: TabType; label: string; color: string }[] = [
+    { key: 'expense', label: pl.transaction.expense, color: colors.expense },
+    { key: 'income', label: pl.transaction.income, color: colors.income },
+    { key: 'transfer', label: pl.transaction.transfer, color: colors.transfer },
+  ];
 
   const [activeTab, setActiveTab] = useState<TabType>(initialValues.type);
   const [amount, setAmount] = useState(initialValues.amount);
@@ -111,7 +115,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     if (note.trim().length > 2 && tab !== 'transfer') {
       const suggestion = getCategorySuggestion(note, tab);
       if (suggestion.categoryId) {
-        setAiSuggestion(suggestion);
+        setAiSuggestion(suggestion as any);
       }
     }
   };
@@ -130,7 +134,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     if (text.trim().length > 2) {
       const suggestion = getCategorySuggestion(text, activeTab);
       if (suggestion.categoryId) {
-        setAiSuggestion(suggestion);
+        setAiSuggestion(suggestion as any);
       } else {
         setAiSuggestion(null);
       }
@@ -199,6 +203,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
+  const styles = createStyles(colors);
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -208,7 +214,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color={Colors.text} />
+            <Ionicons name="close" size={28} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{title}</Text>
           <View style={styles.closeButton} />
@@ -247,7 +253,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="0.00"
-                placeholderTextColor={Colors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
               />
               <Text style={styles.currency}>{pl.common.currency}</Text>
@@ -296,7 +302,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               value={note}
               onChangeText={handleNoteChange}
               placeholder={pl.add.notePlaceholder}
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={2}
             />
@@ -309,7 +315,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 activeOpacity={0.7}
               >
                 <View style={styles.aiSuggestionIcon}>
-                  <Ionicons name="sparkles" size={16} color={Colors.primary} />
+                  <Ionicons name="sparkles" size={16} color={colors.primary} />
                 </View>
                 <View style={styles.aiSuggestionContent}>
                   <Text style={styles.aiSuggestionTitle}>
@@ -323,7 +329,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     }
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -342,12 +348,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               onPress={() => setShowCalendar(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="calendar" size={20} color={Colors.primary} />
+              <Ionicons name="calendar" size={20} color={colors.primary} />
               <Text style={styles.dateText}>{format(date, 'dd.MM.yyyy')}</Text>
               <Text style={styles.dateDayName}>
                 {format(date, 'EEEE', { locale: dateFnsPl })}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -383,7 +389,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             <View style={styles.calendarHeader}>
               <Text style={styles.calendarTitle}>{pl.add.selectDate}</Text>
               <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <Calendar
@@ -392,20 +398,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               markedDates={{
                 [format(date, 'yyyy-MM-dd')]: {
                   selected: true,
-                  selectedColor: Colors.primary,
+                  selectedColor: colors.primary,
                 },
               }}
               theme={{
-                backgroundColor: Colors.surface,
-                calendarBackground: Colors.surface,
-                textSectionTitleColor: Colors.textSecondary,
-                selectedDayBackgroundColor: Colors.primary,
-                selectedDayTextColor: Colors.white,
-                todayTextColor: Colors.primary,
-                dayTextColor: Colors.text,
-                textDisabledColor: Colors.border,
-                arrowColor: Colors.primary,
-                monthTextColor: Colors.text,
+                backgroundColor: colors.surface,
+                calendarBackground: colors.surface,
+                textSectionTitleColor: colors.textSecondary,
+                selectedDayBackgroundColor: colors.primary,
+                selectedDayTextColor: colors.white,
+                todayTextColor: colors.primary,
+                dayTextColor: colors.text,
+                textDisabledColor: colors.border,
+                arrowColor: colors.primary,
+                monthTextColor: colors.text,
                 textMonthFontWeight: '700',
                 textMonthFontSize: 18,
               }}
@@ -441,10 +447,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -456,7 +462,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   closeButton: {
     width: 44,
@@ -467,7 +473,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -478,16 +484,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     alignItems: 'center',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   tabTextActive: {
-    color: Colors.white,
+    color: colors.white,
   },
   content: {
     flex: 1,
@@ -499,7 +505,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 12,
   },
   amountContainer: {
@@ -508,7 +514,7 @@ const styles = StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
   },
@@ -516,40 +522,40 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 32,
     fontWeight: '700',
-    color: Colors.text,
+    color: colors.text,
   },
   currency: {
     fontSize: 24,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginLeft: 8,
   },
   noteInput: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     minHeight: 80,
     textAlignVertical: 'top',
   },
   dateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
   },
   dateText: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
     marginLeft: 12,
     flex: 1,
   },
   dateDayName: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginRight: 8,
     textTransform: 'capitalize',
   },
@@ -568,7 +574,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.white,
+    color: colors.white,
   },
   // Calendar Modal styles
   modalOverlay: {
@@ -578,7 +584,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   calendarContainer: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     width: '90%',
@@ -593,7 +599,7 @@ const styles = StyleSheet.create({
   calendarTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
   },
   quickDates: {
     flexDirection: 'row',
@@ -602,7 +608,7 @@ const styles = StyleSheet.create({
   },
   quickDateButton: {
     flex: 1,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -610,24 +616,24 @@ const styles = StyleSheet.create({
   quickDateText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.primary,
+    color: colors.primary,
   },
   // AI Suggestion styles
   aiSuggestion: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${Colors.primary}15`,
+    backgroundColor: `${colors.primary}15`,
     borderRadius: 12,
     padding: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: `${Colors.primary}30`,
+    borderColor: `${colors.primary}30`,
   },
   aiSuggestionIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.white,
+    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -638,11 +644,11 @@ const styles = StyleSheet.create({
   aiSuggestionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 2,
   },
   aiSuggestionConfidence: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
 });

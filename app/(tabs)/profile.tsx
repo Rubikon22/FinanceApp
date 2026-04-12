@@ -325,15 +325,22 @@ export default function ProfileScreen() {
                       ]}>
                         {recurring.type === 'expense' ? '-' : '+'}{recurring.amount.toFixed(2)}
                       </Text>
-                      <TouchableOpacity
-                        onPress={() => toggleRecurringActive(recurring.id)}
-                      >
-                        <Ionicons
-                          name={recurring.isActive ? 'checkmark-circle' : 'ellipse-outline'}
-                          size={24}
-                          color={recurring.isActive ? colors.income : colors.textSecondary}
-                        />
-                      </TouchableOpacity>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity
+                          onPress={() => toggleRecurringActive(recurring.id)}
+                        >
+                          <Ionicons
+                            name={recurring.isActive ? 'checkmark-circle' : 'ellipse-outline'}
+                            size={24}
+                            color={recurring.isActive ? colors.income : colors.textSecondary}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleDeleteRecurring(recurring.id)}
+                        >
+                          <Ionicons name="trash-outline" size={22} color={colors.expense} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 );
@@ -723,6 +730,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   avatarContainer: {
     width: 72,
@@ -766,6 +775,8 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
     borderRadius: 16,
     marginBottom: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   sectionHeader: {
     flexDirection: 'row',
