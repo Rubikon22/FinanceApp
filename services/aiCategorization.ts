@@ -140,40 +140,6 @@ function calculateCategoryScore(text: string, categoryId: string): number {
 }
 
 /**
- * Suggest category based on transaction note
- */
-export function suggestCategory(
-  note: string,
-  transactionType: 'expense' | 'income' | 'transfer'
-): string | null {
-  if (!note || note.trim().length < 2) {
-    return null;
-  }
-
-  // Get categories for this transaction type
-  const availableCategories = ALL_CATEGORIES.filter(
-    cat => cat.type === transactionType
-  );
-
-  // Calculate scores for all categories
-  const scores = availableCategories.map(category => ({
-    categoryId: category.id,
-    score: calculateCategoryScore(note, category.id),
-  }));
-
-  // Sort by score
-  scores.sort((a, b) => b.score - a.score);
-
-  // Return best match if score is high enough
-  const bestMatch = scores[0];
-  if (bestMatch && bestMatch.score >= 30) {
-    return bestMatch.categoryId;
-  }
-
-  return null;
-}
-
-/**
  * Get suggested category with confidence level
  */
 export function getCategorySuggestion(
@@ -212,18 +178,4 @@ export function getCategorySuggestion(
   }
 
   return { categoryId: bestMatch.categoryId, confidence };
-}
-
-/**
- * Learn from user corrections (future enhancement)
- * This can be used to improve categorization over time
- */
-export function learnFromCorrection(
-  note: string,
-  suggestedCategory: string,
-  actualCategory: string
-): void {
-  // TODO: Implement machine learning feedback loop
-  // For now, this is a placeholder for future ML integration
-  console.log('AI Learning:', { note, suggestedCategory, actualCategory });
 }

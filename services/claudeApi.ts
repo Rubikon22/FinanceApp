@@ -68,10 +68,6 @@ export async function callClaude(
   return res.json();
 }
 
-export function getApiKey(): string {
-  return CLAUDE_API_KEY;
-}
-
 export function isApiKeySet(): boolean {
   return CLAUDE_API_KEY.length > 0 && !CLAUDE_API_KEY.includes('YOUR_CLAUDE');
 }

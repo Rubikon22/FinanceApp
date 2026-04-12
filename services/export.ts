@@ -91,24 +91,3 @@ export const shareFile = async (filePath: string): Promise<void> => {
   }
   await Sharing.shareAsync(filePath);
 };
-
-// Import from JSON
-export const importFromJSON = async (
-  fileUri: string
-): Promise<ExportData> => {
-  const content = await FileSystem.readAsStringAsync(fileUri, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
-
-  const data = JSON.parse(content) as ExportData;
-
-  // Validate structure
-  if (!data.transactions || !Array.isArray(data.transactions)) {
-    throw new Error('Nieprawidlowy format pliku: brak transakcji');
-  }
-  if (!data.accounts || !Array.isArray(data.accounts)) {
-    throw new Error('Nieprawidlowy format pliku: brak kont');
-  }
-
-  return data;
-};
