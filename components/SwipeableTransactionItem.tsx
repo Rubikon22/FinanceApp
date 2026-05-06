@@ -1,16 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Animated,
+  PanResponder,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  interpolate,
-  Extrapolate,
-  runOnJS,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Transaction } from '@/types';
 import { getThemeColors } from '@/constants/colors';
 import { getCategoryById } from '@/constants/categories';
@@ -26,6 +24,7 @@ interface SwipeableTransactionItemProps {
 }
 
 const SWIPE_THRESHOLD = 80;
+const ACTIONS_WIDTH = 160;
 
 export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> = ({
   transaction,
@@ -35,16 +34,49 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
 }) => {
   const theme = useTheme(state => state.theme);
   const colors = getThemeColors(theme);
-
   const getAccountById = useAccounts(state => state.getAccountById);
+
   const category = getCategoryById(transaction.categoryId);
   const account = getAccountById(transaction.accountId);
   const toAccount = transaction.toAccountId ? getAccountById(transaction.toAccountId) : null;
 
-  const translateX = useSharedValue(0);
+  const translateX = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 15;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const newValue = Math.max(Math.min(gestureState.dx, 0), -ACTIONS_WIDTH);
+        translateX.setValue(newValue);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -SWIPE_THRESHOLD) {
+          Animated.spring(translateX, {
+            toValue: -ACTIONS_WIDTH,
+            useNativeDriver: true,
+          }).start();
+        } else {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  const closeSwipe = () => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const handleDelete = () => {
-    translateX.value = withSpring(0);
+    closeSwipe();
     Alert.alert(
       pl.common.delete,
       'Czy na pewno chcesz usunac te transakcje?',
@@ -54,8 +86,11 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
           text: pl.common.delete,
           style: 'destructive',
           onPress: () => {
-            translateX.value = withTiming(-500, { duration: 300 });
-            onDelete?.();
+            Animated.timing(translateX, {
+              toValue: -500,
+              duration: 250,
+              useNativeDriver: true,
+            }).start(() => onDelete?.());
           },
         },
       ]
@@ -63,38 +98,21 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
   };
 
   const handleEdit = () => {
-    translateX.value = withSpring(0);
+    closeSwipe();
     onEdit?.();
   };
 
-  const panGesture = Gesture.Pan()
-    .activeOffsetX([-15, 15])
-    .failOffsetY([-10, 10])
-    .onUpdate((event) => {
-      const newValue = event.translationX;
-      translateX.value = Math.max(Math.min(newValue, 0), -160);
-    })
-    .onEnd(() => {
-      if (translateX.value < -SWIPE_THRESHOLD) {
-        translateX.value = withSpring(-160);
-      } else {
-        translateX.value = withSpring(0);
-      }
-    });
+  const editOpacity = translateX.interpolate({
+    inputRange: [-ACTIONS_WIDTH, -SWIPE_THRESHOLD, 0],
+    outputRange: [1, 1, 0],
+    extrapolate: 'clamp',
+  });
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
-
-  const editButtonStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [0, -80], [0, 1], Extrapolate.CLAMP),
-    transform: [{ scale: interpolate(translateX.value, [0, -80], [0.5, 1], Extrapolate.CLAMP) }],
-  }));
-
-  const deleteButtonStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [-80, -160], [0, 1], Extrapolate.CLAMP),
-    transform: [{ scale: interpolate(translateX.value, [-80, -160], [0.5, 1], Extrapolate.CLAMP) }],
-  }));
+  const deleteOpacity = translateX.interpolate({
+    inputRange: [-ACTIONS_WIDTH, -SWIPE_THRESHOLD, 0],
+    outputRange: [1, 0.5, 0],
+    extrapolate: 'clamp',
+  });
 
   const getAmountColor = () => {
     switch (transaction.type) {
@@ -130,13 +148,13 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
     <View style={styles.container}>
       {/* Background actions */}
       <View style={styles.actionsContainer}>
-        <Animated.View style={[styles.actionButton, styles.editButton, editButtonStyle]}>
+        <Animated.View style={[styles.actionButton, styles.editButton, { opacity: editOpacity }]}>
           <TouchableOpacity onPress={handleEdit} style={styles.actionTouchable}>
             <Ionicons name="pencil" size={22} color={colors.white} />
             <Text style={styles.actionText}>{pl.common.edit}</Text>
           </TouchableOpacity>
         </Animated.View>
-        <Animated.View style={[styles.actionButton, styles.deleteButton, deleteButtonStyle]}>
+        <Animated.View style={[styles.actionButton, styles.deleteButton, { opacity: deleteOpacity }]}>
           <TouchableOpacity onPress={handleDelete} style={styles.actionTouchable}>
             <Ionicons name="trash" size={22} color={colors.white} />
             <Text style={styles.actionText}>{pl.common.delete}</Text>
@@ -145,38 +163,39 @@ export const SwipeableTransactionItem: React.FC<SwipeableTransactionItemProps> =
       </View>
 
       {/* Main content */}
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={[styles.itemContainer, animatedStyle]}>
-          <TouchableOpacity
-            style={styles.content}
-            onPress={onPress}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: category?.color || colors.transfer }]}>
-              <Ionicons name={getIcon() as any} size={22} color={colors.white} />
-            </View>
+      <Animated.View
+        style={[styles.itemContainer, { transform: [{ translateX }] }]}
+        {...panResponder.panHandlers}
+      >
+        <TouchableOpacity
+          style={styles.content}
+          onPress={onPress}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.iconContainer, { backgroundColor: category?.color || colors.transfer }]}>
+            <Ionicons name={getIcon() as any} size={22} color={colors.white} />
+          </View>
 
-            <View style={styles.textContent}>
-              <Text style={styles.category}>
-                {transaction.type === 'transfer' ? pl.transaction.transfer : category?.name || ''}
-              </Text>
-              <Text style={styles.account}>{getSubtitle()}</Text>
-              {transaction.note && (
-                <Text style={styles.note} numberOfLines={1}>{transaction.note}</Text>
-              )}
-            </View>
+          <View style={styles.textContent}>
+            <Text style={styles.category}>
+              {transaction.type === 'transfer' ? pl.transaction.transfer : category?.name || ''}
+            </Text>
+            <Text style={styles.account}>{getSubtitle()}</Text>
+            {transaction.note && (
+              <Text style={styles.note} numberOfLines={1}>{transaction.note}</Text>
+            )}
+          </View>
 
-            <View style={styles.amountContainer}>
-              <Text style={[styles.amount, { color: getAmountColor() }]}>
-                {getAmountPrefix()}{transaction.amount.toFixed(2)} {pl.common.currency}
-              </Text>
-              {transaction.receiptUri && (
-                <Ionicons name="receipt-outline" size={13} color={colors.textSecondary} style={styles.receiptIcon} />
-              )}
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-      </GestureDetector>
+          <View style={styles.amountContainer}>
+            <Text style={[styles.amount, { color: getAmountColor() }]}>
+              {getAmountPrefix()}{transaction.amount.toFixed(2)} {pl.common.currency}
+            </Text>
+            {transaction.receiptUri && (
+              <Ionicons name="receipt-outline" size={13} color={colors.textSecondary} style={styles.receiptIcon} />
+            )}
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };

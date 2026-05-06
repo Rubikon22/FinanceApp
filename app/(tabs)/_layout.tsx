@@ -1,63 +1,50 @@
+import { useRef } from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { View, TouchableOpacity, StyleSheet, Platform, Pressable } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-  withTiming,
-  interpolate,
-} from 'react-native-reanimated';
-import { Colors, getThemeColors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
 import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function AnimatedAddButton({ onPress }: { onPress: () => void }) {
   const theme = useTheme(state => state.theme);
   const colors = getThemeColors(theme);
 
-  const scale = useSharedValue(1);
-  const rotation = useSharedValue(0);
+  const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.9);
+    Animated.spring(scale, {
+      toValue: 0.9,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1);
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePress = () => {
-    rotation.value = withSequence(
-      withTiming(180, { duration: 150 }),
-      withTiming(0, { duration: 150 })
-    );
-    scale.value = withSequence(
-      withSpring(1.2),
-      withSpring(1)
-    );
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.15, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
+    ]).start();
     onPress();
   };
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: scale.value },
-      { rotate: `${rotation.value}deg` },
-    ],
-  }));
-
   return (
-    <AnimatedPressable
-      style={[styles.addButton, { backgroundColor: colors.primary }, animatedStyle]}
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-    >
-      <Ionicons name="add" size={32} color={colors.white} />
-    </AnimatedPressable>
+    <Animated.View style={[styles.addButton, { backgroundColor: colors.primary, transform: [{ scale }] }]}>
+      <TouchableOpacity
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.addButtonInner}
+      >
+        <Ionicons name="add" size={32} color={colors.white} />
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -66,16 +53,16 @@ export default function TabLayout() {
   const theme = useTheme(state => state.theme);
   const colors = getThemeColors(theme);
 
-  const styles = createStyles(colors);
+  const tabStyles = createTabStyles(colors);
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: tabStyles.tabBar,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarLabelStyle: styles.tabBarLabel,
+        tabBarLabelStyle: tabStyles.tabBarLabel,
       }}
     >
       <Tabs.Screen
@@ -134,7 +121,7 @@ export default function TabLayout() {
   );
 }
 
-const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
+const createTabStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.create({
   tabBar: {
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
@@ -156,11 +143,17 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 0,
     shadowColor: '#6C5CE7',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 8,
+  },
+  addButtonInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 28,
   },
 });

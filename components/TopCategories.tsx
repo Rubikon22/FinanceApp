@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInRight } from 'react-native-reanimated';
+
 import { getThemeColors } from '@/constants/colors';
 import { ThemeMode } from '@/types';
 import { pl } from '@/i18n/pl';
@@ -37,10 +37,7 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({
   const styles = createStyles(colors);
 
   return (
-    <Animated.View
-      style={styles.container}
-      entering={FadeInRight.delay(200).duration(400)}
-    >
+    <View style={styles.container}>
       <View style={styles.header}>
         <Ionicons name="trophy" size={20} color={colors.primary} />
         <Text style={styles.title}>
@@ -51,11 +48,7 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({
       {topCategories.length > 0 ? (
         <View style={styles.categoriesList}>
           {topCategories.map((category, index) => (
-            <Animated.View
-              key={category.id}
-              style={styles.categoryRow}
-              entering={FadeInRight.delay(100 * (index + 1)).duration(400)}
-            >
+            <View key={category.id} style={styles.categoryRow}>
               {/* Rank Badge */}
               <View
                 style={[
@@ -118,7 +111,7 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({
                   {category.percentage.toFixed(1)}%
                 </Text>
               </View>
-            </Animated.View>
+            </View>
           ))}
 
           {/* Progress bars */}
@@ -131,7 +124,7 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({
                     { backgroundColor: `${category.color}30` },
                   ]}
                 >
-                  <Animated.View
+                  <View
                     style={[
                       styles.progressFill,
                       {
@@ -180,7 +173,7 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({
           </View>
         </View>
       )}
-    </Animated.View>
+    </View>
   );
 };
 

@@ -9,12 +9,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  Layout,
-} from 'react-native-reanimated';
-import { Colors, getThemeColors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
 import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { Account } from '@/types';
@@ -101,16 +96,12 @@ export const AccountForm: React.FC<Props> = ({
 
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Preview */}
-            <Animated.View
-              style={styles.previewContainer}
-              entering={FadeIn.duration(300)}
-              layout={Layout.springify()}
-            >
+            <View style={styles.previewContainer}>
               <View style={[styles.previewIcon, { backgroundColor: selectedColor }]}>
                 <Ionicons name={selectedIcon as any} size={32} color={colors.white} />
               </View>
               <Text style={styles.previewName}>{name || 'Nazwa konta'}</Text>
-            </Animated.View>
+            </View>
 
             {/* Name Input */}
             <View style={styles.inputGroup}>
@@ -147,16 +138,10 @@ export const AccountForm: React.FC<Props> = ({
               </TouchableOpacity>
 
               {showIconPicker && (
-                <Animated.View
-                  style={styles.pickerContainer}
-                  entering={FadeInDown.duration(200)}
-                >
+                <View style={styles.pickerContainer}>
                   <View style={styles.iconGrid}>
-                    {ACCOUNT_ICONS.map((icon, index) => (
-                      <Animated.View
-                        key={icon.id}
-                        entering={FadeIn.delay(index * 20).duration(200)}
-                      >
+                    {ACCOUNT_ICONS.map((icon) => (
+                      <View key={icon.id}>
                         <TouchableOpacity
                           style={[
                             styles.iconOption,
@@ -176,10 +161,10 @@ export const AccountForm: React.FC<Props> = ({
                             color={selectedIcon === icon.id ? colors.white : colors.text}
                           />
                         </TouchableOpacity>
-                      </Animated.View>
+                      </View>
                     ))}
                   </View>
-                </Animated.View>
+                </View>
               )}
             </View>
 
@@ -204,16 +189,10 @@ export const AccountForm: React.FC<Props> = ({
               </TouchableOpacity>
 
               {showColorPicker && (
-                <Animated.View
-                  style={styles.pickerContainer}
-                  entering={FadeInDown.duration(200)}
-                >
+                <View style={styles.pickerContainer}>
                   <View style={styles.colorGrid}>
-                    {ACCOUNT_COLORS.map((colorOption, index) => (
-                      <Animated.View
-                        key={colorOption.id}
-                        entering={FadeIn.delay(index * 15).duration(200)}
-                      >
+                    {ACCOUNT_COLORS.map((colorOption) => (
+                      <View key={colorOption.id}>
                         <TouchableOpacity
                           style={[
                             styles.colorOption,
@@ -229,10 +208,10 @@ export const AccountForm: React.FC<Props> = ({
                             <Ionicons name="checkmark" size={18} color={colors.white} />
                           )}
                         </TouchableOpacity>
-                      </Animated.View>
+                      </View>
                     ))}
                   </View>
-                </Animated.View>
+                </View>
               )}
             </View>
 

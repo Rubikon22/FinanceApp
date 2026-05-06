@@ -6,14 +6,14 @@ import {
   TouchableOpacity,
   TextInput,
   FlatList,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
+
 import { getThemeColors } from '@/constants/colors';
 import { useTheme } from '@/store/useTheme';
 import { useTransactions } from '@/store/useTransactions';
@@ -155,8 +155,7 @@ export default function ChatbotScreen() {
     const isUser = item.role === 'user';
 
     return (
-      <Animated.View
-        entering={FadeInUp.delay(index * 50).duration(300)}
+      <View
         style={[
           styles.messageContainer,
           isUser ? styles.userMessageContainer : styles.assistantMessageContainer,
@@ -231,7 +230,7 @@ export default function ChatbotScreen() {
             <Ionicons name="person" size={18} color={colors.white} />
           </View>
         )}
-      </Animated.View>
+      </View>
     );
   };
 
@@ -276,7 +275,7 @@ export default function ChatbotScreen() {
 
         {/* Quick Replies */}
         {!isProcessing && messages.length <= 2 && (
-          <Animated.View entering={FadeInDown.delay(200)} style={styles.quickRepliesContainer}>
+          <View style={styles.quickRepliesContainer}>
             <Text style={styles.quickRepliesTitle}>Popularne pytania:</Text>
             <View style={styles.quickReplies}>
               {quickReplies.map((reply, index) => (
@@ -289,7 +288,7 @@ export default function ChatbotScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-          </Animated.View>
+          </View>
         )}
 
         {/* Input Area */}

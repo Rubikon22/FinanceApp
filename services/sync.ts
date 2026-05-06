@@ -16,6 +16,8 @@ import {
   onAuthChange,
 } from './supabase';
 import * as database from './database';
+
+let isSyncing = false;
 import { isOnline, subscribeToNetwork } from './network';
 
 const extractMessage = (error: unknown): string => {
@@ -32,6 +34,7 @@ const countPending = async (): Promise<number> => {
 };
 
 export const syncWithCloud = async (): Promise<void> => {
+  if (isSyncing) return; // prevent parallel sync runs
   const user = useAuth.getState().user;
   if (!user) return;
 
@@ -43,6 +46,7 @@ export const syncWithCloud = async (): Promise<void> => {
     return;
   }
 
+  isSyncing = true;
   useSyncStatus.getState().setSyncing();
 
   try {
@@ -69,13 +73,9 @@ export const syncWithCloud = async (): Promise<void> => {
       }
     }
 
-    // Add cloud transactions that don't exist locally
-    const updatedLocal = await database.getAllTransactions();
-    const localIds = new Set(updatedLocal.map(t => t.id));
+    // Add cloud transactions that don't exist locally (INSERT OR IGNORE — safe to call always)
     for (const cloudTx of cloudTransactions) {
-      if (!localIds.has(cloudTx.id)) {
-        await database.addTransaction({ ...cloudTx, synced: true });
-      }
+      await database.insertTransactionFromCloud(cloudTx);
     }
 
     // ── Accounts ──────────────────────────────────────────────
@@ -84,8 +84,13 @@ export const syncWithCloud = async (): Promise<void> => {
 
     const cloudAccounts = await fetchAccounts(user.id);
     for (const cloudAcc of cloudAccounts) {
-      if (!localAccounts.find(a => a.id === cloudAcc.id)) {
-        await database.addAccount(cloudAcc);
+      const exists = localAccounts.find(a => a.id === cloudAcc.id);
+      if (!exists) {
+        try {
+          await database.addAccount(cloudAcc);
+        } catch {
+          // account already inserted by concurrent path — safe to ignore
+        }
       }
     }
 
@@ -127,6 +132,8 @@ export const syncWithCloud = async (): Promise<void> => {
     const msg = extractMessage(error);
     console.error('Sync error:', msg);
     useSyncStatus.getState().setSyncError(msg);
+  } finally {
+    isSyncing = false;
   }
 };
 

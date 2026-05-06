@@ -112,6 +112,34 @@ export const getTransactionsByDateRange = async (startDate: string, endDate: str
   }));
 };
 
+/**
+ * Insert a transaction that came from the cloud — uses INSERT OR IGNORE
+ * so it's safe to call even if the record already exists locally.
+ * Does NOT touch account balances (cloud accounts are synced separately).
+ */
+export const insertTransactionFromCloud = async (transaction: Transaction): Promise<void> => {
+  const database = await getDatabase();
+  await database.runAsync(
+    `INSERT OR IGNORE INTO transactions
+      (id, type, amount, categoryId, accountId, toAccountId, note, date, receiptUri, createdAt, updatedAt, synced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      transaction.id,
+      transaction.type,
+      transaction.amount,
+      transaction.categoryId,
+      transaction.accountId,
+      transaction.toAccountId || null,
+      transaction.note || null,
+      transaction.date,
+      transaction.receiptUri || null,
+      transaction.createdAt,
+      transaction.updatedAt,
+      1, // always mark as synced
+    ]
+  );
+};
+
 export const addTransaction = async (transaction: Transaction): Promise<void> => {
   const database = await getDatabase();
   await database.runAsync(

@@ -5,16 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  FadeInRight,
-  FadeInDown,
-  Layout,
-} from 'react-native-reanimated';
-import { Colors, getThemeColors } from '@/constants/colors';
+import { getThemeColors } from '@/constants/colors';
 import { useTheme } from '@/store/useTheme';
 import { pl } from '@/i18n/pl';
 import { useAccounts } from '@/store/useAccounts';
@@ -336,12 +331,7 @@ export default function ReportsScreen() {
             <Text style={styles.sectionTitle}>Statystyki miesieczne</Text>
 
             {monthlyStats.map((stat, index) => (
-              <Animated.View
-                key={stat.month}
-                style={styles.monthCard}
-                entering={FadeInRight.delay(index * 100).duration(400)}
-                layout={Layout.springify()}
-              >
+              <View key={stat.month} style={styles.monthCard}>
                 <Text style={styles.monthLabel}>{stat.monthLabel}</Text>
 
                 <View style={styles.statsRow}>
@@ -399,22 +389,19 @@ export default function ReportsScreen() {
                     />
                   </View>
                 </View>
-              </Animated.View>
+              </View>
             ))}
           </View>
         ) : (
           /* Accounts Tab */
           <View>
             {/* Total Assets */}
-            <Animated.View
-              style={styles.totalCard}
-              entering={FadeInDown.duration(400)}
-            >
+            <View style={styles.totalCard}>
               <Text style={styles.totalLabel}>Aktywa netto</Text>
               <Text style={[styles.totalAmount, { color: totalBalance >= 0 ? colors.income : colors.expense }]}>
                 {totalBalance.toFixed(2)} {pl.common.currency}
               </Text>
-            </Animated.View>
+            </View>
 
             {/* Accounts List */}
             <View style={styles.sectionHeader}>
@@ -430,12 +417,8 @@ export default function ReportsScreen() {
               </TouchableOpacity>
             </View>
 
-            {accounts.map((account, index) => (
-              <Animated.View
-                key={account.id}
-                entering={FadeInRight.delay(index * 100).duration(400)}
-                layout={Layout.springify()}
-              >
+            {accounts.map((account) => (
+              <View key={account.id}>
                 <TouchableOpacity
                   style={styles.accountCard}
                   onPress={() => handleEditAccount(account)}
@@ -465,30 +448,24 @@ export default function ReportsScreen() {
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
             ))}
 
             {accounts.length === 0 && (
-              <Animated.View
-                style={styles.emptyState}
-                entering={FadeInDown.delay(200).duration(400)}
-              >
+              <View style={styles.emptyState}>
                 <Ionicons name="wallet-outline" size={48} color={colors.textSecondary} />
                 <Text style={styles.emptyText}>Brak kont</Text>
                 <Text style={styles.emptySubtext}>Dodaj pierwsze konto</Text>
-              </Animated.View>
+              </View>
             )}
 
             {/* Hint */}
-            <Animated.View
-              style={styles.hintContainer}
-              entering={FadeInDown.delay(400).duration(400)}
-            >
+            <View style={styles.hintContainer}>
               <Ionicons name="information-circle" size={20} color={colors.textSecondary} />
               <Text style={styles.hintText}>
                 Dotknij konto aby edytowac jego nazwe, ikone lub kolor
               </Text>
-            </Animated.View>
+            </View>
           </View>
         )}
       </ScrollView>

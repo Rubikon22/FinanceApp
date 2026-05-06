@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInRight } from 'react-native-reanimated';
+
 import { getThemeColors } from '@/constants/colors';
 import { ThemeMode } from '@/types';
 import { pl } from '@/i18n/pl';
@@ -95,10 +95,7 @@ export const MonthComparison: React.FC<MonthComparisonProps> = ({
   const styles = createStyles(colors);
 
   return (
-    <Animated.View
-      style={styles.container}
-      entering={FadeInRight.duration(400)}
-    >
+    <View style={styles.container}>
       <View style={styles.header}>
         <Ionicons name="analytics" size={20} color={colors.primary} />
         <Text style={styles.title}>Porownanie miesiecy</Text>
@@ -127,7 +124,7 @@ export const MonthComparison: React.FC<MonthComparisonProps> = ({
           false
         )}
       </View>
-    </Animated.View>
+    </View>
   );
 };
 

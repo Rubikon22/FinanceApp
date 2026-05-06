@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInRight } from 'react-native-reanimated';
+
 import { LineChart } from 'react-native-chart-kit';
 import { getThemeColors } from '@/constants/colors';
 import { ThemeMode } from '@/types';
@@ -62,10 +62,7 @@ export const BalanceTrend: React.FC<BalanceTrendProps> = ({ data, theme }) => {
   const styles = createStyles(colors);
 
   return (
-    <Animated.View
-      style={styles.container}
-      entering={FadeInRight.delay(300).duration(400)}
-    >
+    <View style={styles.container}>
       <View style={styles.header}>
         <Ionicons name="trending-up" size={20} color={colors.primary} />
         <Text style={styles.title}>Dynamika bilansu</Text>
@@ -194,7 +191,7 @@ export const BalanceTrend: React.FC<BalanceTrendProps> = ({ data, theme }) => {
             : 'Twoj bilans jest stabilny w ostatnich miesiacach.'}
         </Text>
       </View>
-    </Animated.View>
+    </View>
   );
 };
 

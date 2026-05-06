@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInRight } from 'react-native-reanimated';
+
 import { getThemeColors } from '@/constants/colors';
 import { ThemeMode } from '@/types';
 import { pl } from '@/i18n/pl';
@@ -50,10 +50,7 @@ export const ExpenseForecast: React.FC<ExpenseForecastProps> = ({
   const styles = createStyles(colors);
 
   return (
-    <Animated.View
-      style={styles.container}
-      entering={FadeInRight.delay(100).duration(400)}
-    >
+    <View style={styles.container}>
       <View style={styles.header}>
         <Ionicons name="trending-up" size={20} color={colors.primary} />
         <Text style={styles.title}>Prognoza wydatkow</Text>
@@ -173,7 +170,7 @@ export const ExpenseForecast: React.FC<ExpenseForecastProps> = ({
           </Text>
         </View>
       )}
-    </Animated.View>
+    </View>
   );
 };
 
