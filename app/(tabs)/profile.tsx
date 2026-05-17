@@ -10,6 +10,8 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -459,59 +461,67 @@ export default function ProfileScreen() {
         transparent={true}
         onRequestClose={() => setShowLoginModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {isRegisterMode ? 'Rejestracja' : pl.profile.login}
-              </Text>
-              <TouchableOpacity onPress={() => {
-                setShowLoginModal(false);
-                setIsRegisterMode(false);
-                setEmail('');
-                setPassword('');
-              }}>
-                <Ionicons name="close" size={24} color={colors.text} />
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {isRegisterMode ? 'Rejestracja' : pl.profile.login}
+                </Text>
+                <TouchableOpacity onPress={() => {
+                  setShowLoginModal(false);
+                  setIsRegisterMode(false);
+                  setEmail('');
+                  setPassword('');
+                }}>
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Email"
+                placeholderTextColor={colors.textSecondary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                returnKeyType="next"
+              />
+
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Hasło"
+                placeholderTextColor={colors.textSecondary}
+                secureTextEntry
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+
+              <TouchableOpacity style={styles.submitButton} onPress={handleLogin}>
+                <Text style={styles.submitButtonText}>
+                  {isRegisterMode ? 'Zarejestruj się' : pl.profile.login}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.switchModeButton}
+                onPress={() => setIsRegisterMode(prev => !prev)}
+              >
+                <Text style={styles.switchModeText}>
+                  {isRegisterMode
+                    ? 'Masz już konto? Zaloguj się'
+                    : 'Nie masz konta? Zarejestruj się'}
+                </Text>
               </TouchableOpacity>
             </View>
-
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Email"
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Hasło"
-              placeholderTextColor={colors.textSecondary}
-              secureTextEntry
-            />
-
-            <TouchableOpacity style={styles.submitButton} onPress={handleLogin}>
-              <Text style={styles.submitButtonText}>
-                {isRegisterMode ? 'Zarejestruj się' : pl.profile.login}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.switchModeButton}
-              onPress={() => setIsRegisterMode(prev => !prev)}
-            >
-              <Text style={styles.switchModeText}>
-                {isRegisterMode
-                  ? 'Masz już konto? Zaloguj się'
-                  : 'Nie masz konta? Zarejestruj się'}
-              </Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Settings Modal */}

@@ -1,210 +1,187 @@
-# Finanse - Aplikacja do zarzadzania finansami
+# FinanseApp — Aplikacja do zarządzania finansami osobistymi
 
-Mobilna aplikacja (Android + iOS) do sledzenia wydatkow, przychodow i budzetowania.
+Mobilna aplikacja (Android + iOS) do śledzenia wydatków, przychodów i budżetowania z wbudowanym asystentem AI opartym na Claude API (Anthropic).
 
 ## Technologie
 
-- **React Native** + **Expo** (SDK 52)
+- **React Native** + **Expo** (SDK 54)
 - **TypeScript**
-- **Expo Router** - nawigacja
-- **Zustand** - zarzadzanie stanem
-- **SQLite** - lokalna baza danych
-- **Firebase** - autoryzacja i synchronizacja w chmurze
-- **react-native-calendars** - kalendarz
-- **react-native-chart-kit** - wykresy
-- **AI Features** - lokalna sztuczna inteligencja (offline)
+- **Expo Router** — nawigacja oparta na plikach
+- **Zustand** — zarządzanie stanem (7 store'ów)
+- **SQLite** (`expo-sqlite`) — lokalna baza danych (offline-first)
+- **Supabase** — autoryzacja i synchronizacja z chmurą (PostgreSQL)
+- **Claude API (Anthropic)** — chatbot AI z function calling
+- **react-native-chart-kit** — wykresy
+- **react-native-calendars** — kalendarz
+- **@react-native-community/netinfo** — wykrywanie sieci
 
-## 🤖 AI Features (NOWOŚĆ!)
+## Funkcje AI (Claude API)
 
-### 1. Automatyczna kategoryzacja transakcji 🏷️
-- AI rozpoznaje kategorię po opisie (np. "McDonald's" → Jedzenie)
-- Ponad 300 słów kluczowych w 11 kategoriach
-- 3 poziomy pewności: wysoka 🎯, średnia 👍, niska 🤔
-- Sugestie w czasie rzeczywistym podczas pisania notatki
+### 1. Chatbot finansowy
+- Rozmowa w języku naturalnym (polskim)
+- Dodawanie transakcji bezpośrednio z czatu: _"Wydałem 50 zł na kawę"_
+- Mechanizm **tool_use** (function calling) — Claude wywołuje akcje w aplikacji
+- Historia konwersacji — model pamięta kontekst rozmowy
+- Fallback na lokalne przetwarzanie gdy API niedostępne
 
-### 2. Inteligentne podpowiedzi oszczędnościowe 💡
-- Analiza wzorców wydatków
-- Wykrywanie nietypowych trendów
-- Personalizowane rekomendacje
-- 7 typów insightów (ostrzeżenia, porady, sukcesy)
-- Przewijane karty z najważniejszymi radami
+### 2. Automatyczna kategoryzacja transakcji
+- Sugestie kategorii na podstawie opisu transakcji
+- 3 poziomy pewności: wysoka, średnia, niska
+- Analiza słów kluczowych (>350 wzorców w 12 kategoriach)
 
-### 3. Chatbot finansowy 🤖
-- Naturalne polecenia po polsku
-- Obsługa 4 głównych intentów:
-  - Dodawanie transakcji: "Dodaj wydatek 50 zł na taxi"
-  - Sprawdzanie bilansu: "Pokaż mój bilans"
-  - Wydatki: "Ile wydałem na jedzenie?"
-  - Podsumowania: "Raport tego miesiąca"
-- Quick replies dla popularnych zapytań
-- Integracja z akcjami (dodaj transakcję, zobacz raporty)
+### 3. Inteligentne porady finansowe
+- Analiza wzorców wydatków w czasie rzeczywistym
+- 7 typów spostrzeżeń (ostrzeżenia, porady, sukcesy)
+- Porównanie z poprzednim miesiącem
+- Wykrywanie częstych małych transakcji i wydatków weekendowych
 
-**✅ Wszystkie funkcje AI działają 100% offline - pełna prywatność!**
+## Główne funkcjonalności
 
-Zobacz szczegóły: [AI_FEATURES.md](./AI_FEATURES.md)
+### Transakcje
+- Trzy typy: Wydatek, Przychód, Przelew między kontami
+- Swipe w lewo → przyciski Edytuj / Usuń
+- Zdjęcia paragonów (aparat lub galeria)
+- Filtrowanie zaawansowane (typ, kategoria, kwota, data)
+- Kalendarz z widokiem przychodów/wydatków per dzień
 
-## Funkcjonalnosci
+### Konta
+- Wiele kont (gotówka, karta, oszczędności itd.)
+- Automatyczna aktualizacja salda przy każdej transakcji
+- Domyślne konta przy pierwszym uruchomieniu: Gotówka + Karta płatnicza
 
-### Zapisy (Glowna)
-- **🤖 Inteligentne podpowiedzi AI** - przewijane karty z rekomendacjami oszczędnościowymi
-- Lista transakcji pogrupowana po datach
-- Karta podsumowania miesiaca (przychody, wydatki, bilans)
-- Przelaczanie miedzy miesiacami
-- Kalendarz z podgledem dochodow/wydatkow na kazdy dzien
-- Filtrowanie po dacie i zaawansowane filtry
-- Podglad szczegolow transakcji
-- Edycja i usuwanie transakcji (swipe to delete)
+### Budżety
+- Miesięczne limity wydatków per kategoria
+- Pasek progresu z ostrzeżeniami przy przekroczeniu
 
-### Dodawanie transakcji
-- Trzy typy: Wydatek, Przychod, Przelew
-- **🤖 AI auto-kategoryzacja** - sugestie kategorii na podstawie notatki
-- Wybor kategorii (8 kategorii wydatkow, 4 kategorii przychodow)
-- Wybor konta
-- Notatka
-- Wybor daty z kalendarza
-- Szybkie przyciski "Dzisiaj" i "Wczoraj"
+### Płatności cykliczne
+- Częstotliwości: dziennie, tygodniowo, miesięcznie, rocznie
+- Automatyczne generowanie transakcji w terminie
+- Widok i usuwanie z poziomu profilu
 
-### Wykresy
-- Wykres kolowy wydatkow po kategoriach
-- Wybor zakresu dat (od - do)
-- Podsumowanie przychodow i wydatkow
-- Legenda z procentami
+### Raporty i wykresy
+- Wykres kołowy wydatków po kategoriach
+- Porównanie miesięcy (bieżący vs poprzedni)
+- Prognoza wydatków na koniec miesiąca
+- Top 5 kategorii
+- Dynamika bilansu (wykres liniowy)
+- Statystyki za ostatnie 6 miesięcy
 
-### Raporty
-- **Analityka** - zaawansowana analiza finansow:
-  - 📊 Porownanie miesiecy (biezacy vs poprzedni)
-  - 📈 Prognoza wydatkow na podstawie historii
-  - 🏆 Top 5 kategorii wydatkow
-  - 📉 Dynamika bilansu (wykres liniowy)
-  - 📅 Statystyki miesieczne za ostatnie 6 miesiecy
-- **Konta** - lista kont z saldami, aktywa netto
-- Automatyczne tworzenie kont: "Gotówka" i "Karta płatnicza"
-- Dodawanie, edycja i usuwanie kont
+### Eksport danych
+- CSV (kompatybilny z Excel, separator `;`, kodowanie UTF-8)
+- JSON (pełny backup)
 
-### Profil
-- **🤖 Asystent AI** - chatbot finansowy z naturalnym językiem
-- Budżety - planowanie budżetu na kategorie
-- Transakcje cykliczne - automatyczne powtarzające się płatności
-- Logowanie/wylogowanie
-- Ustawienia (tryb ciemny, jezyk)
-- Synchronizacja z chmura
-- Eksport danych (JSON, CSV)
+### Synchronizacja
+- **Offline-first**: wszystkie operacje zapisują się lokalnie (SQLite)
+- Automatyczna synchronizacja z Supabase po przywróceniu połączenia
+- Wykrywanie stanu sieci przez NetInfo
+
+### Motywy
+- Tryb ciemny i jasny
+- Dynamiczne kolory we wszystkich komponentach
 
 ## Struktura projektu
 
 ```
 apka/
-├── app/                          # Ekrany (Expo Router)
+├── app/                              # Ekrany (Expo Router)
 │   ├── (tabs)/
-│   │   ├── _layout.tsx           # Tab navigator
-│   │   ├── index.tsx             # Zapisy + AI Insights
-│   │   ├── charts.tsx            # Wykresy
-│   │   ├── reports.tsx           # Raporty + Analityka AI
-│   │   └── profile.tsx           # Profil
-│   ├── chatbot.tsx               # 🤖 AI Chatbot
-│   ├── add-transaction.tsx       # Dodawanie transakcji + AI
-│   ├── edit-transaction.tsx      # Edycja transakcji
-│   └── _layout.tsx               # Root layout
+│   │   ├── _layout.tsx               # Tab navigator
+│   │   ├── index.tsx                 # Zapisy (lista transakcji + AI Insights)
+│   │   ├── charts.tsx                # Wykresy
+│   │   ├── reports.tsx               # Raporty + Analityka + Konta
+│   │   ├── profile.tsx               # Profil, budżety, płatności cykliczne
+│   │   └── add-placeholder.tsx       # Placeholder środkowej zakładki
+│   ├── _layout.tsx                   # Root layout (Stack)
+│   ├── add-transaction.tsx           # Modal dodawania transakcji
+│   ├── edit-transaction.tsx          # Modal edycji transakcji
+│   ├── calendar.tsx                  # Modal kalendarza (wybór dat)
+│   ├── filters.tsx                   # Modal zaawansowanych filtrów
+│   └── chatbot.tsx                   # Chatbot AI
 ├── components/
-│   ├── TransactionForm.tsx       # Forma z AI kategoryzacją
-│   ├── SmartInsights.tsx         # 🤖 AI Insights karty
-│   ├── MonthComparison.tsx       # Porównanie miesięcy
-│   ├── ExpenseForecast.tsx       # Prognoza wydatków
-│   ├── TopCategories.tsx         # Top 5 kategorii
-│   ├── BalanceTrend.tsx          # Dynamika bilansu
-│   ├── TransactionList.tsx       # Lista transakcji
-│   ├── BudgetForm.tsx            # Formularz budżetu
-│   └── RecurringTransactionForm.tsx # Transakcje cykliczne
-├── store/
-│   ├── useTransactions.ts        # Stan transakcji
-│   ├── useAccounts.ts            # Stan kont (z domyślnymi)
-│   ├── useBudgets.ts             # Stan budżetów
-│   ├── useRecurring.ts           # Stan transakcji cyklicznych
-│   ├── useAuth.ts                # Stan autoryzacji
-│   └── useTheme.ts               # Stan motywu (dark/light)
+│   ├── TransactionForm.tsx           # Formularz z AI kategoryzacją
+│   ├── TransactionList.tsx           # Lista z grupowaniem po datach
+│   ├── SwipeableTransactionItem.tsx  # Element z gestem swipe
+│   ├── SmartInsights.tsx             # Karty AI porad finansowych
+│   ├── MonthComparison.tsx           # Porównanie miesięcy
+│   ├── ExpenseForecast.tsx           # Prognoza wydatków
+│   ├── TopCategories.tsx             # Top 5 kategorii
+│   ├── BalanceTrend.tsx              # Dynamika bilansu (wykres liniowy)
+│   ├── BudgetForm.tsx                # Formularz budżetu
+│   ├── BudgetProgressCard.tsx        # Karta progresu budżetu
+│   ├── RecurringTransactionForm.tsx  # Formularz płatności cyklicznych
+│   ├── AccountForm.tsx               # Formularz konta
+│   ├── AccountPicker.tsx             # Wybór konta
+│   ├── CategoryPicker.tsx            # Wybór kategorii
+│   ├── ReceiptPicker.tsx             # Zdjęcia paragonów
+│   └── SyncStatusBanner.tsx          # Baner statusu synchronizacji
+├── store/                            # Zustand stores (7 szt.)
+│   ├── useTransactions.ts
+│   ├── useAccounts.ts
+│   ├── useBudgets.ts
+│   ├── useRecurring.ts
+│   ├── useAuth.ts
+│   ├── useTheme.ts
+│   └── useSyncStatus.ts
 ├── services/
-│   ├── aiCategorization.ts       # 🤖 AI Auto-kategoryzacja
-│   ├── aiInsights.ts             # 🤖 AI Smart Insights
-│   ├── aiChatbot.ts              # 🤖 AI Chatbot NLP
-│   ├── database.ts               # Operacje SQLite
-│   ├── firebase.ts               # Konfiguracja Firebase
-│   ├── export.ts                 # Eksport danych
-│   └── sync.ts                   # Synchronizacja
+│   ├── claudeApi.ts                  # HTTP wrapper dla Claude API
+│   ├── secrets.ts                    # Klucze API (plik w .gitignore!)
+│   ├── aiChatbot.ts                  # Logika chatbota (tool_use)
+│   ├── aiCategorization.ts           # Auto-kategoryzacja transakcji
+│   ├── aiInsights.ts                 # Inteligentne porady finansowe
+│   ├── database.ts                   # Operacje SQLite
+│   ├── supabase.ts                   # Klient Supabase
+│   ├── sync.ts                       # Synchronizacja z chmurą
+│   ├── export.ts                     # Eksport CSV/JSON
+│   └── network.ts                    # Wykrywanie sieci
 ├── constants/
-│   ├── categories.ts             # Kategorie
-│   └── colors.ts                 # Kolory (dark/light)
+│   ├── categories.ts                 # Definicje kategorii
+│   ├── colors.ts                     # Kolory (dark/light theme)
+│   └── accountOptions.ts             # Opcje ikon i kolorów kont
 ├── types/
-│   └── index.ts                  # Typy TypeScript
+│   └── index.ts                      # Typy TypeScript
 └── i18n/
-    └── pl.ts                     # Tłumaczenia polskie
+    └── pl.ts                         # Tłumaczenia polskie
 ```
-
-## Kategorie
-
-### Wydatki
-- Jedzenie
-- Transport
-- Zakupy
-- Rozrywka
-- Zdrowie
-- Rachunki
-- Edukacja
-- Inne
-
-### Przychody
-- Wynagrodzenie
-- Prezent
-- Inwestycje
-- Inne
 
 ## Instalacja
 
 ```bash
-# Instalacja zaleznosci
+# Instalacja zależności
 npm install
 
-# Uruchomienie
-npx expo start
-
-# Lub z wyczyszczeniem cache
+# Uruchomienie (z wyczyszczeniem cache)
 npx expo start --clear
 ```
 
-## Uruchamianie
+## Konfiguracja kluczy API
 
-- **Android**: Nacisnij `a` w terminalu lub zeskanuj QR kod w Expo Go
-- **iOS**: Nacisnij `i` w terminalu lub zeskanuj QR kod w Expo Go
-- **Web**: Nacisnij `w` w terminalu
-
-## Firebase (opcjonalnie)
-
-Aby wlaczyc synchronizacje w chmurze:
-
-1. Utworz projekt w [Firebase Console](https://console.firebase.google.com/)
-2. Wlacz Authentication (Email/Password)
-3. Utworz baze Firestore
-4. Skopiuj konfiguracje do `services/firebase.ts`
+Utwórz plik `services/secrets.ts` (jest on w `.gitignore` — nie trafi do repozytorium):
 
 ```typescript
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+export const CLAUDE_API_KEY = 'sk-ant-...';       // console.anthropic.com
+export const SUPABASE_URL = 'https://xxx.supabase.co';
+export const SUPABASE_ANON_KEY = 'eyJ...';
 ```
 
-## Pierwsze uruchomienie
+Aplikacja działa bez kluczy — chatbot AI przełączy się na tryb lokalny, a synchronizacja z chmurą będzie niedostępna.
 
-Przy pierwszym uruchomieniu aplikacji automatycznie tworzone są:
-- **2 konta domyślne**:
-  - 💵 Gotówka (cash, kolor zielony)
-  - 💳 Karta płatnicza (card, kolor fioletowy)
-- Wszystkie kategorie wydatków i przychodów
+## Uruchamianie
 
-Możesz dodać własne konta lub używać domyślnych.
+- **Android / iOS**: Zeskanuj QR kod w aplikacji **Expo Go**
+- **Web**: Naciśnij `w` w terminalu
+
+> Wymagana wersja Expo Go obsługująca SDK 54.
+
+## Architektura — kluczowe decyzje
+
+| Decyzja | Rozwiązanie |
+|---|---|
+| Offline-first | SQLite jako główna baza, Supabase jako sync |
+| Bezpieczny sync | `INSERT OR IGNORE` + mutex `isSyncing` |
+| Motywy | `createStyles(colors)` pattern, `getThemeColors(theme)` |
+| Kalendarze i filtry | Osobne ekrany expo-router zamiast Modal (Android fix) |
+| Claude API w RN | Bezpośrednie wywołania HTTP (bez Node.js SDK) |
+| Bezpieczeństwo kluczy | `services/secrets.ts` w `.gitignore` |
 
 ## Modele danych
 
@@ -219,6 +196,7 @@ interface Transaction {
   toAccountId?: string;
   note?: string;
   date: string;
+  receiptUri?: string;
   createdAt: string;
   updatedAt: string;
   synced: boolean;
@@ -237,9 +215,9 @@ interface Account {
 }
 ```
 
-## Jezyk interfejsu
+## Język interfejsu
 
-Aplikacja jest w jezyku **polskim**.
+Interfejs w całości po **polsku** (`i18n/pl.ts`).
 
 ## Licencja
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,9 @@ import {
   Platform,
   Alert,
   Modal,
+  Keyboard,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
@@ -81,6 +82,22 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSave,
 }) => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const isNoteFocused = useRef(false);
+
+  // Scroll to bottom when keyboard fully appears and note field is active
+  useEffect(() => {
+    const sub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        if (isNoteFocused.current) {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }
+      },
+    );
+    return () => sub.remove();
+  }, []);
 
   const theme = useTheme(state => state.theme);
   const colors = getThemeColors(theme);
@@ -206,11 +223,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const styles = createStyles(colors);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+    <>
+    <KeyboardAvoidingView
+      style={[styles.keyboardView, { backgroundColor: colors.background }]}
+      behavior="height"
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
@@ -243,7 +261,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           ))}
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Amount Input */}
           <View style={styles.amountContainer}>
             <Text style={styles.label}>{pl.add.amount}</Text>
@@ -255,6 +278,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 placeholder="0.00"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
+                returnKeyType="done"
               />
               <Text style={styles.currency}>{pl.common.currency}</Text>
             </View>
@@ -305,6 +329,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={2}
+              onFocus={() => { isNoteFocused.current = true; }}
+              onBlur={() => { isNoteFocused.current = false; }}
             />
 
             {/* AI Category Suggestion */}
@@ -356,10 +382,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
+
+          {/* Bottom padding for scroll area */}
+          <View style={{ height: 16 }} />
         </ScrollView>
 
         {/* Save Button */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <TouchableOpacity
             style={[
               styles.saveButton,
@@ -375,10 +404,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
 
-      {/* Calendar Modal */}
-      <Modal
+    {/* Calendar Modal */}
+    <Modal
         visible={showCalendar}
         animationType="slide"
         transparent={true}
@@ -443,7 +473,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 };
 
@@ -561,7 +591,7 @@ const createStyles = (colors: ReturnType<typeof getThemeColors>) => StyleSheet.c
   },
   footer: {
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+    // paddingBottom is set dynamically via useSafeAreaInsets in JSX
   },
   saveButton: {
     paddingVertical: 16,

@@ -1,453 +1,119 @@
-# AI Features Documentation
+# Funkcje AI — dokumentacja techniczna
 
-## Przegląd funkcji AI
-
-Aplikacja Finanse została wzbogacona o zaawansowane funkcje AI, które automatyzują i ułatwiają zarządzanie finansami osobistymi.
+Aplikacja wykorzystuje dwa podejścia do sztucznej inteligencji:
+1. **Claude API (Anthropic)** — chatbot z rozumieniem języka naturalnego i function calling
+2. **Lokalne przetwarzanie** — kategoryzacja i porady finansowe (działa offline)
 
 ---
 
-## 1. Automatyczna kategor izacja transakcji 🏷️
+## 1. Chatbot finansowy (Claude API)
 
-### Lokalizacja
-- **Serwis**: `services/aiCategorization.ts`
-- **Integracja**: `components/TransactionForm.tsx`
-
-### Funkcjonalność
-
-AI automatycznie sugeruje kategorię na podstawie notatki do transakcji, używając:
-- Analizy słów kluczowych
-- Dopasowania wzorców
-- Systemu punktacji (confidence scoring)
+**Plik:** `services/aiChatbot.ts`, `services/claudeApi.ts`, `app/chatbot.tsx`
 
 ### Jak to działa
 
-1. Użytkownik wpisuje notatkę (np. "McDonald's")
-2. AI analizuje tekst i wyszukuje dopasowania w bazie słów kluczowych
-3. Wyświetla się sugestia z poziomem pewności:
-   - **Wysoka** 🎯 (70-100%): Dokładne dopasowanie
-   - **Średnia** 👍 (50-69%): Prawdopodobne dopasowanie
-   - **Niska** 🤔 (30-49%): Możliwe dopasowanie
+Chatbot wysyła zapytanie do Claude API (model `claude-sonnet-4-20250514`) przez HTTP. Razem z wiadomością użytkownika przekazywane są:
+- **System prompt** z kontekstem finansowym (saldo kont, ostatnie transakcje)
+- **Historia rozmowy** — model pamięta poprzednie wiadomości
+- **Definicja narzędzia** `add_transaction` — Claude może wywołać ją aby dodać transakcję
 
-### Przykłady rozpoznawania
+### Mechanizm tool_use (function calling)
 
+```
+Użytkownik: "Wydałem 50 zł na kawę"
+     ↓
+Claude API → zwraca tool_use: add_transaction({ amount: 50, categoryId: "food", note: "kawa" })
+     ↓
+App wywołuje addTransaction() w Zustand store
+     ↓
+Claude API → zwraca końcową odpowiedź: "Dodałem wydatek 50 zł na kawę ✓"
+```
+
+### Obsługiwane polecenia
+
+- Dodawanie transakcji: _"Wydałem 120 zł na zakupy"_
+- Pytania o bilans: _"Ile mam na koncie?"_
+- Analiza wydatków: _"Ile wydałem na jedzenie w tym miesiącu?"_
+- Porady finansowe: _"Jak mogę oszczędzać?"_
+
+### Tryb fallback (offline)
+
+Gdy Claude API jest niedostępne (brak internetu lub brak klucza), chatbot przechodzi na lokalne przetwarzanie z rozpoznawaniem intentów przez słowa kluczowe.
+
+### Konfiguracja
+
+Klucz API przechowywany w `services/secrets.ts` (plik w `.gitignore`):
 ```typescript
-"McDonald's"      → Jedzenie (wysoka pewność)
-"Uber"           → Transport (wysoka pewność)
-"Netflix"        → Rozrywka (wysoka pewność)
-"Lidl"           → Jedzenie (wysoka pewność)
-"Apteka"         → Zdrowie (wysoka pewność)
-"Prąd"           → Rachunki (wysoka pewność)
+export const CLAUDE_API_KEY = 'sk-ant-...';
 ```
-
-### Baza słów kluczowych
-
-Ponad **300 słów kluczowych** w 11 kategoriach:
-- Jedzenie (food)
-- Transport (transport)
-- Zakupy (shopping)
-- Rozrywka (entertainment)
-- Zdrowie (health)
-- Rachunki (bills)
-- Edukacja (education)
-- Wynagrodzenie (salary)
-- Prezent (gift)
-- Inwestycje (investment)
-- Inne (other)
-
-### UI/UX
-
-Gdy AI wykryje kategorię, pojawia się karta z sugestią:
-
-```
-┌─────────────────────────────────────┐
-│ ✨ AI podpowiedź: Jedzenie          │
-│ Pewność: wysoka 🎯                  │
-│                               >     │
-└─────────────────────────────────────┘
-```
-
-Kliknięcie automatycznie wybiera sugerowaną kategorię.
 
 ---
 
-## 2. Inteligentne podpowiedzi oszczędnościowe 💡
+## 2. Automatyczna kategoryzacja transakcji
 
-### Lokalizacja
-- **Serwis**: `services/aiInsights.ts`
-- **Komponent**: `components/SmartInsights.tsx`
-- **Wyświetlanie**: `app/(tabs)/index.tsx` (główny ekran)
+**Plik:** `services/aiCategorization.ts`  
+**Integracja:** `components/TransactionForm.tsx`
 
 ### Funkcjonalność
 
-AI analizuje wzorce wydatków i generuje personalizowane rekomendacje w czasie rzeczywistym.
+Podczas wpisywania notatki do transakcji, system analizuje tekst i sugeruje kategorię:
 
-### Typy insightów
+| Notatka | Kategoria | Pewność |
+|---|---|---|
+| "McDonald's" | Jedzenie | Wysoka 🎯 |
+| "Uber" | Transport | Wysoka 🎯 |
+| "Netflix" | Rozrywka | Wysoka 🎯 |
+| "Apteka" | Zdrowie | Wysoka 🎯 |
+| "Zakupy" | Zakupy | Średnia 👍 |
 
-#### 1. ⚠️ Ostrzeżenia (Warning)
+### Poziomy pewności
+
+- **Wysoka** (wynik ≥ 70): Dokładne dopasowanie słów kluczowych
+- **Średnia** (wynik 50–69): Prawdopodobne dopasowanie
+- **Niska** (wynik 30–49): Możliwe dopasowanie
+
+### Jak to działa
+
 ```typescript
-{
-  type: 'warning',
-  title: 'Wzrost wydatków: Jedzenie',
-  message: 'Wydatki na jedzenie wzrosły o 67% (1200 PLN).
-           To więcej niż w zeszłym miesiącu!',
-  priority: 5
-}
+getCategorySuggestion(note, transactionType)
+// zwraca: { categoryId: 'food', confidence: 'high' }
 ```
 
-**Kiedy**: Wzrost wydatków >50% w kategorii z kwotą >200 PLN
+System oblicza wynik punktowy dla każdej kategorii na podstawie dopasowania słów kluczowych, a następnie zwraca kategorię z najwyższym wynikiem (jeśli przekracza próg 30 pkt).
 
-#### 2. 💡 Porady (Tip)
-```typescript
-{
-  type: 'tip',
-  title: 'Wysoka suma: Jedzenie',
-  message: 'Wydałeś już 850 PLN na jedzenie w tym miesiącu.
-           Średnio 56.67 PLN na transakcję.
-           Rozważ ograniczenie wydatków.',
-  priority: 4
-}
-```
-
-**Kiedy**: Suma wydatków w kategorii >800 PLN
-
-#### 3. ✅ Sukcesy (Success)
-```typescript
-{
-  type: 'success',
-  title: 'Świetna praca! 🎉',
-  message: 'Wydajesz mniej niż w zeszłym miesiącu!
-           Zaoszczędziłeś już 320 PLN. Tak trzymaj!',
-  priority: 5
-}
-```
-
-**Kiedy**: Wydatki <80% wydatków z poprzedniego miesiąca
-
-#### 4. ℹ️ Informacje (Info)
-```typescript
-{
-  type: 'info',
-  title: 'Wiele subskrypcji',
-  message: 'Masz 5 subskrypcji o łącznej wartości 150 PLN/miesiąc.
-           Sprawdź czy wszystkie są potrzebne!',
-  priority: 3
-}
-```
-
-**Kiedy**: Wykryto >3 subskrypcje
-
-### Analiza wzorców
-
-AI analizuje:
-- **Częstotliwość transakcji**: Małe, częste wydatki (np. kawa)
-- **Wydatki weekendowe**: >40% wydatków w weekendy
-- **Średnia dzienna**: Prognoza miesięczna
-- **Porównania**: Obecny vs poprzedni miesiąc
-- **Subskrypcje**: Netflix, Spotify, gym, itp.
-
-### Priorytety (1-5)
-
-Insights są sortowane według priorytetu:
-- **5**: Krytyczne (duże zmiany, oszczędności)
-- **4**: Ważne (wysokie wydatki)
-- **3**: Średnie (wzorce, subskrypcje)
-- **2**: Niskie (ogólne statystyki)
-- **1**: Informacyjne (brak danych)
-
-### UI - Przewijane karty
-
-Insights wyświetlają się jako poziomo przewijane karty nad listą transakcji:
-
-```
-┌─────────┐  ┌─────────┐  ┌─────────┐
-│ Karta 1 │  │ Karta 2 │  │ Karta 3 │
-│ Warning │  │ Success │  │ Tip     │
-└─────────┘  └─────────┘  └─────────┘
-  <──────────────────────────────>
-```
-
-Maksymalnie **5 najważniejszych** insightów.
+Działa w **100% offline** — nie wymaga połączenia z internetem.
 
 ---
 
-## 3. Chatbot finansowy 🤖
+## 3. Inteligentne porady finansowe
 
-### Lokalizacja
-- **Serwis**: `services/aiChatbot.ts`
-- **Ekran**: `app/chatbot.tsx`
-- **Dostęp**: Profil → "Asystent AI"
+**Plik:** `services/aiInsights.ts`  
+**Integracja:** `components/SmartInsights.tsx`, `app/(tabs)/index.tsx`
 
-### Funkcjonalność
+### Typy spostrzeżeń
 
-Chatbot rozumie polecenia w języku naturalnym (polski) i pomaga zarządzać finansami.
+| Typ | Przykład |
+|---|---|
+| ⚠️ Ostrzeżenie | Wydatki na jedzenie wzrosły o 60% vs poprzedni miesiąc |
+| 💡 Porada | Masz 18 małych transakcji w kategorii Jedzenie |
+| 🎉 Sukces | Wydajesz mniej niż w zeszłym miesiącu! Zaoszczędziłeś 340 zł |
+| ℹ️ Info | 45% wydatków przypada na weekendy |
+| 📊 Statystyka | Średnia dzienna: 87 zł. Prognoza na miesiąc: 2 697 zł |
 
-### Obsługiwane intenty
+### Jak to działa
 
-#### 1. Dodawanie transakcji
-**Przykłady zapytań:**
-```
-"Dodaj wydatek 50 zł na taxi"
-"Wydałem 25 złotych na kawę"
-"Zapłaciłem 100 pln za uber"
-```
-
-**Odpowiedź AI:**
-```
-Rozumiem! Chcesz dodać wydatek 50.00 PLN
-w kategorii "Transport".
-
-[Dodaj transakcję] ← przycisk akcji
-```
-
-#### 2. Sprawdzanie bilansu
-**Przykłady zapytań:**
-```
-"Pokaż mój bilans"
-"Ile mam pieniędzy?"
-"Jakie jest moje saldo?"
-```
-
-**Odpowiedź AI:**
-```
-Twój aktualny bilans to **2450.50 PLN**
-
-• Gotówka: 500.00 PLN
-• Karta: 1950.50 PLN
-```
-
-#### 3. Wydatki po kategoriach
-**Przykłady zapytań:**
-```
-"Ile wydałem na jedzenie w tym miesiącu?"
-"Wydatki na transport"
-"Pokaż wszystkie wydatki"
-```
-
-**Odpowiedź AI:**
-```
-W tym miesiącu wydałeś **850.00 PLN** na Jedzenie.
-
-Liczba transakcji: 23
-```
-
-#### 4. Podsumowanie
-**Przykłady zapytań:**
-```
-"Podsumowanie tego miesiąca"
-"Statystyki"
-"Raport miesięczny"
-```
-
-**Odpowiedź AI:**
-```
-📊 Podsumowanie luty 2026:
-
-💰 Przychody: +5000.00 PLN
-💸 Wydatki: -3200.00 PLN
-📈 Bilans: +1800.00 PLN
-```
-
-### Ekstrakcja encji
-
-AI automatycznie wyodrębnia z tekstu:
-
-**Kwoty:**
-```
-"50 zł"     → 50.00
-"25 złotych" → 25.00
-"100 pln"   → 100.00
-"75.50"     → 75.50
-```
-
-**Kategorie:**
-```
-"taxi"          → transport
-"uber"          → transport
-"kawa"          → food
-"kawiarnia"     → food
-"netflix"       → entertainment
-"spotify"       → entertainment
-```
-
-**Okresy czasu:**
-```
-"w tym miesiącu"     → current_month
-"ostatni miesiąc"    → last_month
-"dzisiaj"           → today
-"w tym tygodniu"    → week
-```
-
-### Quick Replies
-
-Szybkie odpowiedzi pod polem wpisywania:
-
-```
-┌────────────────┐ ┌────────────────┐
-│ Pokaż bilans   │ │ Ile wydałem    │
-│                │ │ na jedzenie?   │
-└────────────────┘ └────────────────┘
-```
-
-Kliknięcie automatycznie wpisuje tekst.
-
-### Akcje
-
-Niektóre odpowiedzi zawierają przyciski akcji:
-- **Dodaj transakcję** → Otwiera formularz dodawania
-- **Pokaż bilans** → Przechodzi do Raportów
-- **Zobacz wykresy** → Przechodzi do Wykresów
-- **Zobacz raporty** → Przechodzi do Raportów
-
-### UI ekranu
-
-```
-┌─────────────────────────────────────┐
-│ ← Asystent AI        ✨  Zawsze     │
-│                         online       │
-├─────────────────────────────────────┤
-│                                     │
-│   ┌──────────────────────────┐     │
-│   │ Cześć! 👋               │     │
-│   │ Jestem Twoim asystentem │     │
-│   │ finansowym...           │     │
-│   └──────────────────────────┘     │
-│   ⏰ 14:23                          │
-│                                     │
-│                  ┌──────────────┐  │
-│                  │ Pokaż bilans │  │
-│                  └──────────────┘  │
-│                  ⏰ 14:24           │
-│                                     │
-│   ┌──────────────────────────┐     │
-│   │ Twój bilans: 2450 PLN   │     │
-│   │ [Zobacz raporty →]      │     │
-│   └──────────────────────────┘     │
-│                                     │
-├─────────────────────────────────────┤
-│ Popularne pytania:                  │
-│ [Pokaż bilans] [Ile wydałem?]      │
-├─────────────────────────────────────┤
-│ ┌─────────────────────────────┐ 📤 │
-│ │ Napisz wiadomość...         │    │
-│ └─────────────────────────────┘    │
-└─────────────────────────────────────┘
-```
-
----
-
-## Techniczne szczegóły
-
-### Algorytmy
-
-#### Kategoryzacja
 ```typescript
-function calculateCategoryScore(text: string, categoryId: string): number {
-  // Exact match: 100 points
-  // Contains keyword: 50 points
-  // Starts with keyword: 70 points
-  // Partial match (>3 chars): 30 points
-
-  // Threshold: 30 points minimum
-}
+generateSmartInsights(transactions: Transaction[]): SmartInsight[]
 ```
 
-#### Confidence levels
-```typescript
-score >= 70 → 'high'    (🎯)
-score >= 50 → 'medium'  (👍)
-score >= 30 → 'low'     (🤔)
-score < 30  → null      (brak sugestii)
-```
+Funkcja analizuje transakcje bieżącego miesiąca i poprzedniego:
+1. Porównuje wydatki per kategoria (wzrost > 50% → ostrzeżenie)
+2. Wykrywa częste małe transakcje (> 15 w kategorii jedzenie)
+3. Porównuje całkowite wydatki z poprzednim miesiącem
+4. Analizuje wzorce weekendowe (> 40% wydatków)
+5. Sprawdza subskrypcje (słowa kluczowe: netflix, spotify, gym...)
+6. Oblicza prognozę na koniec miesiąca
 
-### Wydajność
+Zwraca maksymalnie **5 spostrzeżeń** posortowanych według priorytetu.
 
-- **Kategoryzacja**: <50ms (instant)
-- **Insights**: <100ms (jednorazowo przy renderze)
-- **Chatbot**: ~500ms (z opóźnieniem dla UX)
-
-### Prywatność
-
-Wszystkie obliczenia AI wykonywane są **lokalnie** na urządzeniu:
-- ✅ Brak wysyłania danych do chmury
-- ✅ Offline-first
-- ✅ Pełna prywatność
-- ✅ Brak kosztów API
-
----
-
-## Przyszłe ulepszenia
-
-### Machine Learning
-- Uczenie się z korekcji użytkownika
-- Personalizowane modele
-- Predykcja przyszłych wydatków
-
-### NLP Enhancements
-- Rozpoznawanie daty ("wczoraj", "w zeszłym tygodniu")
-- Kontekst konwersacji w chatbocie
-- Obsługa błędów ortograficznych
-
-### Więcej insightów
-- Analiza trendów sezonowych
-- Porównanie z średnimi krajowymi
-- Cele oszczędnościowe z AI
-
-### Głosowy asystent
-- Voice-to-text input
-- Text-to-speech output
-- Pełna obsługa głosowa
-
----
-
-## Przykłady użycia
-
-### Scenariusz 1: Zakup kawy
-1. Dodaję transakcję
-2. Wpisuję notatkę: "Starbucks"
-3. AI sugeruje: "Jedzenie" (wysoka pewność)
-4. Klikam sugestię → kategoria automatycznie wybrana ✅
-
-### Scenariusz 2: Przekroczenie budżetu
-1. Otwieram aplikację
-2. Widzę insight: ⚠️ "Wzrost wydatków: Rozrywka +85%"
-3. Przeglądam szczegóły w Raportach
-4. Ograniczam wydatki ✅
-
-### Scenariusz 3: Szybkie zapytanie
-1. Otwieram chatbota (Profil → Asystent AI)
-2. Piszę: "Ile wydałem na jedzenie?"
-3. Otrzymuję: "850 PLN, 23 transakcje"
-4. Klikam "Zobacz wykresy" → analiza szczegółowa ✅
-
----
-
-## FAQ
-
-**Q: Czy AI wymaga internetu?**
-A: Nie! Wszystko działa offline.
-
-**Q: Czy moje dane są bezpieczne?**
-A: Tak, żadne dane nie opuszczają urządzenia.
-
-**Q: Czy mogę dodać własne słowa kluczowe?**
-A: Obecnie nie, ale planowane w przyszłości.
-
-**Q: Jak dokładny jest chatbot?**
-A: ~85-90% dla prostych zapytań w języku polskim.
-
-**Q: Czy mogę wyłączyć AI?**
-A: Insights można zignorować, kategoryzacja jest opcjonalna.
-
----
-
-## Podsumowanie
-
-Funkcje AI w aplikacji Finanse:
-- 🏷️ **Automatyczna kategoryzacja** (300+ słów kluczowych)
-- 💡 **Inteligentne podpowiedzi** (7 typów analiz)
-- 🤖 **Chatbot finansowy** (4 główne intenty)
-- 🔒 **100% offline** (prywatność)
-- ⚡ **Szybkie** (<100ms)
-- 🇵🇱 **Polski język**
-
-Wszystko zaprojektowane, aby uczynić zarządzanie finansami **łatwiejszym**, **szybszym** i **mądrzejszym**! ✨
+Działa w **100% offline** — nie wymaga połączenia z internetem.
