@@ -1,7 +1,7 @@
 # Funkcje AI — dokumentacja techniczna
 
 Aplikacja wykorzystuje dwa podejścia do sztucznej inteligencji:
-1. **Claude API (Anthropic)** — chatbot z rozumieniem języka naturalnego i function calling
+1. **Claude API (Anthropic)** — chatbot z rozumieniem języka naturalnego i function calling (wymaga internetu)
 2. **Lokalne przetwarzanie** — kategoryzacja i porady finansowe (działa offline)
 
 ---
@@ -36,9 +36,18 @@ Claude API → zwraca końcową odpowiedź: "Dodałem wydatek 50 zł na kawę �
 - Analiza wydatków: _"Ile wydałem na jedzenie w tym miesiącu?"_
 - Porady finansowe: _"Jak mogę oszczędzać?"_
 
-### Tryb fallback (offline)
+### Obsługa błędów
 
-Gdy Claude API jest niedostępne (brak internetu lub brak klucza), chatbot przechodzi na lokalne przetwarzanie z rozpoznawaniem intentów przez słowa kluczowe.
+Gdy Claude API zwróci błąd, chatbot wyświetla czytelny komunikat zamiast odpowiedzi:
+
+| Błąd | Komunikat dla użytkownika |
+|---|---|
+| Brak środków (402) | Informacja o konieczności doładowania konta Anthropic |
+| Nieprawidłowy klucz (401) | Prośba o sprawdzenie klucza w `services/secrets.ts` |
+| Przeciążone serwery (529) | Sugestia ponowienia próby za chwilę |
+| Brak internetu | Prośba o sprawdzenie połączenia sieciowego |
+
+Chatbot działa **wyłącznie online** — nie ma trybu offline.
 
 ### Konfiguracja
 

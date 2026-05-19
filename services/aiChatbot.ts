@@ -6,8 +6,8 @@
 
 import { Transaction, TransactionType } from '@/types';
 import { ALL_CATEGORIES, getCategoryById } from '@/constants/categories';
-import { callClaude, isApiKeySet, ClaudeMessage, ClaudeContentBlock, ClaudeTool } from './claudeApi';
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, format } from 'date-fns';
+import { callClaude, ClaudeMessage, ClaudeContentBlock, ClaudeTool } from './claudeApi';
+import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { pl as dateFnsPl } from 'date-fns/locale';
 
 // ── Public types ───────────────────────────────────────────────
@@ -165,11 +165,6 @@ export async function processQuery(
   accounts: { name: string; balance: number }[],
   conversationHistory: ChatMessage[] = [],
 ): Promise<ProcessQueryResult> {
-  // If no API key, fall back to simple local processing
-  if (!isApiKeySet()) {
-    return processQueryLocal(query, transactions, accounts);
-  }
-
   const system = buildSystemPrompt(transactions, accounts);
 
   // Build Claude messages from conversation history + new user message
@@ -246,80 +241,34 @@ export async function processQuery(
         timestamp,
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Claude API error:', error);
-    // Fall back to local processing on API error
-    return processQueryLocal(query, transactions, accounts);
-  }
-}
 
-// ── Fallback: local keyword-based processing (no API key) ──────
+    const messageId = `msg-${Date.now()}`;
+    const timestamp = new Date();
 
-function processQueryLocal(
-  query: string,
-  transactions: Transaction[],
-  accounts: { name: string; balance: number }[],
-): ProcessQueryResult {
-  const q = query.toLowerCase().trim();
-  const messageId = `msg-${Date.now()}`;
-  const timestamp = new Date();
-
-  // Balance
-  if (q.includes('bilans') || q.includes('saldo') || q.includes('ile mam')) {
-    const total = accounts.reduce((s, a) => s + a.balance, 0);
-    return {
-      reply: {
-        id: messageId,
-        role: 'assistant',
-        content:
-          `Twój aktualny bilans to **${total.toFixed(2)} PLN**\n\n` +
-          accounts.map(a => `• ${a.name}: ${a.balance.toFixed(2)} PLN`).join('\n'),
-        timestamp,
-        action: { type: 'show_balance' },
-      },
-    };
-  }
-
-  // Stats
-  if (q.includes('statystyki') || q.includes('podsumowanie') || q.includes('raport')) {
-    const now = new Date();
-    const mStart = startOfMonth(now);
-    const mEnd = endOfMonth(now);
-    const mTx = transactions.filter(t => {
-      const d = new Date(t.date);
-      return d >= mStart && d <= mEnd;
-    });
-    const income = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expenses = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    // Extract a readable message from the error
+    let errorText = 'Błąd połączenia z Claude API. Sprawdź połączenie internetowe i spróbuj ponownie.';
+    const raw: string = error?.message || '';
+    if (raw.includes('credit balance is too low') || raw.includes('402')) {
+      errorText = 'Brak środków na koncie Anthropic. Doładuj kredyty na console.anthropic.com i spróbuj ponownie.';
+    } else if (raw.includes('401') || raw.includes('invalid x-api-key') || raw.includes('authentication')) {
+      errorText = 'Nieprawidłowy klucz API Claude. Sprawdź klucz w services/secrets.ts.';
+    } else if (raw.includes('529') || raw.includes('overloaded')) {
+      errorText = 'Serwery Claude są przeciążone. Spróbuj ponownie za chwilę.';
+    } else if (raw.includes('Network') || raw.includes('fetch')) {
+      errorText = 'Brak internetu. Sprawdź połączenie sieciowe i spróbuj ponownie.';
+    }
 
     return {
       reply: {
         id: messageId,
         role: 'assistant',
-        content:
-          `Podsumowanie ${format(now, 'LLLL yyyy', { locale: dateFnsPl })}:\n\n` +
-          `Przychody: +${income.toFixed(2)} PLN\n` +
-          `Wydatki: -${expenses.toFixed(2)} PLN\n` +
-          `Bilans: ${(income - expenses).toFixed(2)} PLN`,
+        content: errorText,
         timestamp,
-        action: { type: 'show_stats' },
       },
     };
   }
-
-  return {
-    reply: {
-      id: messageId,
-      role: 'assistant',
-      content:
-        'Tryb offline — brak klucza API Claude.\n\n' +
-        'Ustaw klucz API w services/claudeApi.ts aby odblokować pełne możliwości AI.\n\n' +
-        'Dostępne komendy offline:\n' +
-        '• "Pokaż bilans"\n' +
-        '• "Podsumowanie miesiąca"',
-      timestamp,
-    },
-  };
 }
 
 /**

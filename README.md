@@ -22,7 +22,7 @@ Mobilna aplikacja (Android + iOS) do śledzenia wydatków, przychodów i budżet
 - Dodawanie transakcji bezpośrednio z czatu: _"Wydałem 50 zł na kawę"_
 - Mechanizm **tool_use** (function calling) — Claude wywołuje akcje w aplikacji
 - Historia konwersacji — model pamięta kontekst rozmowy
-- Fallback na lokalne przetwarzanie gdy API niedostępne
+- Wymaga aktywnego połączenia z internetem i ważnego klucza API
 
 ### 2. Automatyczna kategoryzacja transakcji
 - Sugestie kategorii na podstawie opisu transakcji
@@ -163,7 +163,7 @@ export const SUPABASE_URL = 'https://xxx.supabase.co';
 export const SUPABASE_ANON_KEY = 'eyJ...';
 ```
 
-Aplikacja działa bez kluczy — chatbot AI przełączy się na tryb lokalny, a synchronizacja z chmurą będzie niedostępna.
+Klucz Claude API jest wymagany do działania chatbota — bez niego asystent AI nie będzie dostępny. Bez klucza Supabase synchronizacja z chmurą będzie niedostępna.
 
 ## Uruchamianie
 

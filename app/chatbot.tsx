@@ -19,7 +19,6 @@ import { useTheme } from '@/store/useTheme';
 import { useTransactions } from '@/store/useTransactions';
 import { useAccounts } from '@/store/useAccounts';
 import { ChatMessage, processQuery, getQuickReplies } from '@/services/aiChatbot';
-import { isApiKeySet } from '@/services/claudeApi';
 import { format } from 'date-fns';
 
 export default function ChatbotScreen() {
@@ -33,15 +32,11 @@ export default function ChatbotScreen() {
   const accounts = useAccounts(state => state.accounts);
   const loadAccounts = useAccounts(state => state.loadAccounts);
 
-  const hasApiKey = isApiKeySet();
-
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: hasApiKey
-        ? 'Cześć! Jestem Twoim asystentem finansowym opartym na AI.\n\nMogę:\n• Dodać transakcję — po prostu napisz np. "Wydałem 35 zł na kawę"\n• Analizować Twoje wydatki\n• Odpowiadać na pytania o finanse\n• Doradzać jak oszczędzać\n\nZapamiętam kontekst rozmowy, więc możesz dopytywać!'
-        : 'Cześć! Jestem Twoim asystentem finansowym.\n\nUwaga: klucz API Claude nie jest ustawiony. Działam w trybie offline z ograniczonymi funkcjami.\n\nUstaw klucz w services/claudeApi.ts aby odblokować pełne AI.',
+      content: 'Cześć! Jestem Twoim asystentem finansowym opartym na AI.\n\nMogę:\n• Dodać transakcję — po prostu napisz np. "Wydałem 35 zł na kawę"\n• Analizować Twoje wydatki\n• Odpowiadać na pytania o finanse\n• Doradzać jak oszczędzać\n\nZapamiętam kontekst rozmowy, więc możesz dopytywać!',
       timestamp: new Date(),
     },
   ]);
@@ -249,9 +244,7 @@ export default function ChatbotScreen() {
           </View>
           <View>
             <Text style={styles.headerTitle}>Asystent AI</Text>
-            <Text style={styles.headerSubtitle}>
-              {hasApiKey ? 'Claude AI' : 'Tryb offline'}
-            </Text>
+            <Text style={styles.headerSubtitle}>Claude AI</Text>
           </View>
         </View>
         <View style={styles.backButton} />
